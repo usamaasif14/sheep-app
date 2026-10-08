@@ -389,7 +389,7 @@ class _BreedingCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          FutureBuilder<Sheep?>(
+          FutureBuilder<Animal?>(
             future: db.getSheepById(record.eweId),
             builder: (context, snap) {
               final ewe = snap.data;
