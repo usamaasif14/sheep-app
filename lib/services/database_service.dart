@@ -1,7 +1,7 @@
-// database_service.dart - SQLite local database management
+// database_service.dart - SQLite local database
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
-import '../models/sheep_model.dart';
+import '../models/animal_model.dart';
 import '../models/health_model.dart';
 import '../models/breeding_model.dart';
 
@@ -19,27 +19,90 @@ class DatabaseService {
 
   Future<Database> _initDatabase() async {
     final dbPath = await getDatabasesPath();
-    final path = join(dbPath, 'sheep_farm.db');
+    final path = join(dbPath, 'farm_manager.db');
     return openDatabase(
       path,
-      version: 1,
+      version: 3,
       onCreate: _createTables,
+      onUpgrade: _onUpgrade,
     );
   }
 
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    // Migration: add new columns if upgrading from old sheep-only db
+    if (oldVersion < 2) {
+      try { await db.execute('ALTER TABLE sheep ADD COLUMN animalType TEXT DEFAULT "Sheep"'); } catch (_) {}
+      try { await db.execute('ALTER TABLE sheep ADD COLUMN purchaseCost REAL'); } catch (_) {}
+      try { await db.execute('ALTER TABLE sheep ADD COLUMN birthLocation TEXT'); } catch (_) {}
+      try { await db.execute('ALTER TABLE sheep ADD COLUMN groupOwner TEXT'); } catch (_) {}
+    }
+    if (oldVersion < 3) {
+      // Create new tables added in v3
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS animals (
+            id TEXT PRIMARY KEY,
+            tagNumber TEXT NOT NULL,
+            name TEXT,
+            animalType TEXT DEFAULT 'Sheep',
+            breed TEXT,
+            gender TEXT NOT NULL,
+            dateOfBirth TEXT NOT NULL,
+            weight REAL,
+            color TEXT,
+            status TEXT DEFAULT 'Active',
+            purchaseCost REAL,
+            birthLocation TEXT,
+            groupOwner TEXT,
+            motherId TEXT,
+            fatherId TEXT,
+            photoPath TEXT,
+            notes TEXT,
+            dateAdded TEXT NOT NULL,
+            lastUpdated TEXT NOT NULL
+          )
+        ''');
+      } catch (_) {}
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS custom_values (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category TEXT NOT NULL,
+            value TEXT NOT NULL,
+            UNIQUE(category, value)
+          )
+        ''');
+      } catch (_) {}
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS animal_groups (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT,
+            createdAt TEXT NOT NULL
+          )
+        ''');
+      } catch (_) {}
+    }
+  }
+
   Future<void> _createTables(Database db, int version) async {
-    // Sheep table
+    // Animals (all types)
     await db.execute('''
-      CREATE TABLE sheep (
+      CREATE TABLE animals (
         id TEXT PRIMARY KEY,
         tagNumber TEXT NOT NULL,
         name TEXT,
+        animalType TEXT DEFAULT 'Sheep',
         breed TEXT,
         gender TEXT NOT NULL,
         dateOfBirth TEXT NOT NULL,
         weight REAL,
         color TEXT,
         status TEXT DEFAULT 'Active',
+        purchaseCost REAL,
+        birthLocation TEXT,
+        groupOwner TEXT,
         motherId TEXT,
         fatherId TEXT,
         photoPath TEXT,
@@ -49,7 +112,7 @@ class DatabaseService {
       )
     ''');
 
-    // Health records table
+    // Health records
     await db.execute('''
       CREATE TABLE health_records (
         id TEXT PRIMARY KEY,
@@ -65,8 +128,7 @@ class DatabaseService {
         nextDueDate TEXT,
         status TEXT DEFAULT 'Completed',
         notes TEXT,
-        createdAt TEXT NOT NULL,
-        FOREIGN KEY (sheepId) REFERENCES sheep(id)
+        createdAt TEXT NOT NULL
       )
     ''');
 
@@ -77,8 +139,7 @@ class DatabaseService {
         sheepId TEXT NOT NULL,
         weight REAL NOT NULL,
         date TEXT NOT NULL,
-        notes TEXT,
-        FOREIGN KEY (sheepId) REFERENCES sheep(id)
+        notes TEXT
       )
     ''');
 
@@ -95,8 +156,7 @@ class DatabaseService {
         lambsBorn INTEGER,
         lambsSurvived INTEGER,
         notes TEXT,
-        createdAt TEXT NOT NULL,
-        FOREIGN KEY (eweId) REFERENCES sheep(id)
+        createdAt TEXT NOT NULL
       )
     ''');
 
@@ -127,62 +187,96 @@ class DatabaseService {
         createdAt TEXT NOT NULL
       )
     ''');
+
+    // Custom saved values (breeds, locations, groups, etc.)
+    await db.execute('''
+      CREATE TABLE custom_values (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        category TEXT NOT NULL,
+        value TEXT NOT NULL,
+        UNIQUE(category, value)
+      )
+    ''');
+
+    // Groups / owners
+    await db.execute('''
+      CREATE TABLE animal_groups (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        createdAt TEXT NOT NULL
+      )
+    ''');
   }
 
-  // ============ SHEEP CRUD ============
+  // ══════════════════════════════════════════════════════════════════
+  // ANIMALS
+  // ══════════════════════════════════════════════════════════════════
 
-  Future<String> insertSheep(Sheep sheep) async {
+  Future<String> insertAnimal(Animal animal) async {
     final db = await database;
-    await db.insert('sheep', sheep.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
-    return sheep.id;
+    await db.insert('animals', animal.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
+    return animal.id;
   }
 
-  Future<List<Sheep>> getAllSheep({String? status}) async {
+  Future<List<Animal>> getAllAnimals({String? status, String? animalType}) async {
     final db = await database;
-    final List<Map<String, dynamic>> maps = status != null
-        ? await db.query('sheep', where: 'status = ?', whereArgs: [status], orderBy: 'dateAdded DESC')
-        : await db.query('sheep', orderBy: 'dateAdded DESC');
-    return maps.map((m) => Sheep.fromMap(m)).toList();
+    String? where;
+    List<dynamic>? whereArgs;
+    if (status != null && animalType != null) {
+      where = 'status = ? AND animalType = ?';
+      whereArgs = [status, animalType];
+    } else if (status != null) {
+      where = 'status = ?';
+      whereArgs = [status];
+    } else if (animalType != null) {
+      where = 'animalType = ?';
+      whereArgs = [animalType];
+    }
+    final maps = await db.query('animals',
+        where: where, whereArgs: whereArgs, orderBy: 'dateAdded DESC');
+    return maps.map((m) => Animal.fromMap(m)).toList();
   }
 
-  Future<Sheep?> getSheepById(String id) async {
+  Future<Animal?> getAnimalById(String id) async {
     final db = await database;
-    final maps = await db.query('sheep', where: 'id = ?', whereArgs: [id]);
+    final maps = await db.query('animals', where: 'id = ?', whereArgs: [id]);
     if (maps.isEmpty) return null;
-    return Sheep.fromMap(maps.first);
+    return Animal.fromMap(maps.first);
   }
 
-  Future<List<Sheep>> searchSheep(String query) async {
+  Future<List<Animal>> getOffspring(String parentId) async {
     final db = await database;
-    final maps = await db.query(
-      'sheep',
-      where: 'tagNumber LIKE ? OR name LIKE ? OR breed LIKE ?',
-      whereArgs: ['%$query%', '%$query%', '%$query%'],
-    );
-    return maps.map((m) => Sheep.fromMap(m)).toList();
+    final maps = await db.query('animals',
+        where: 'motherId = ? OR fatherId = ?',
+        whereArgs: [parentId, parentId],
+        orderBy: 'dateOfBirth DESC');
+    return maps.map((m) => Animal.fromMap(m)).toList();
   }
 
-  Future<int> updateSheep(Sheep sheep) async {
+  Future<int> updateAnimal(Animal animal) async {
     final db = await database;
-    return db.update('sheep', sheep.toMap(), where: 'id = ?', whereArgs: [sheep.id]);
+    return db.update('animals', animal.toMap(),
+        where: 'id = ?', whereArgs: [animal.id]);
   }
 
-  Future<int> deleteSheep(String id) async {
+  Future<int> deleteAnimal(String id) async {
     final db = await database;
-    return db.delete('sheep', where: 'id = ?', whereArgs: [id]);
+    return db.delete('animals', where: 'id = ?', whereArgs: [id]);
   }
 
-  Future<Map<String, int>> getSheepStatistics() async {
+  Future<Map<String, int>> getAnimalStatistics() async {
     final db = await database;
     final result = await db.rawQuery('''
-      SELECT 
+      SELECT
         COUNT(*) as total,
         SUM(CASE WHEN gender = 'Female' THEN 1 ELSE 0 END) as females,
         SUM(CASE WHEN gender = 'Male' THEN 1 ELSE 0 END) as males,
         SUM(CASE WHEN status = 'Active' THEN 1 ELSE 0 END) as active,
         SUM(CASE WHEN status = 'Sold' THEN 1 ELSE 0 END) as sold,
         SUM(CASE WHEN status = 'Deceased' THEN 1 ELSE 0 END) as deceased
-      FROM sheep
+      FROM animals
     ''');
     final row = result.first;
     return {
@@ -195,41 +289,43 @@ class DatabaseService {
     };
   }
 
-  // ============ HEALTH RECORDS ============
+  // Keep old name for compatibility
+  Future<List<Animal>> getAllSheep({String? status}) =>
+      getAllAnimals(status: status);
+  Future<Map<String, int>> getSheepStatistics() => getAnimalStatistics();
+  Future<String> insertSheep(Animal a) => insertAnimal(a);
+  Future<int> updateSheep(Animal a) => updateAnimal(a);
+  Future<int> deleteSheep(String id) => deleteAnimal(id);
+  Future<Animal?> getSheepById(String id) => getAnimalById(id);
+
+  // ══════════════════════════════════════════════════════════════════
+  // HEALTH RECORDS
+  // ══════════════════════════════════════════════════════════════════
 
   Future<String> insertHealthRecord(HealthRecord record) async {
     final db = await database;
-    await db.insert('health_records', record.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert('health_records', record.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
     return record.id;
   }
 
-  Future<List<HealthRecord>> getHealthRecordsForSheep(String sheepId) async {
+  Future<List<HealthRecord>> getHealthRecordsForSheep(String animalId) async {
     final db = await database;
-    final maps = await db.query(
-      'health_records',
-      where: 'sheepId = ?',
-      whereArgs: [sheepId],
-      orderBy: 'date DESC',
-    );
+    final maps = await db.query('health_records',
+        where: 'sheepId = ?', whereArgs: [animalId], orderBy: 'date DESC');
     return maps.map((m) => HealthRecord.fromMap(m)).toList();
   }
 
   Future<List<HealthRecord>> getUpcomingHealthTasks() async {
     final db = await database;
     final now = DateTime.now().toIso8601String();
-    final future = DateTime.now().add(const Duration(days: 30)).toIso8601String();
-    final maps = await db.query(
-      'health_records',
-      where: 'nextDueDate BETWEEN ? AND ?',
-      whereArgs: [now, future],
-      orderBy: 'nextDueDate ASC',
-    );
+    final future =
+        DateTime.now().add(const Duration(days: 30)).toIso8601String();
+    final maps = await db.query('health_records',
+        where: 'nextDueDate BETWEEN ? AND ?',
+        whereArgs: [now, future],
+        orderBy: 'nextDueDate ASC');
     return maps.map((m) => HealthRecord.fromMap(m)).toList();
-  }
-
-  Future<int> updateHealthRecord(HealthRecord record) async {
-    final db = await database;
-    return db.update('health_records', record.toMap(), where: 'id = ?', whereArgs: [record.id]);
   }
 
   Future<int> deleteHealthRecord(String id) async {
@@ -237,102 +333,107 @@ class DatabaseService {
     return db.delete('health_records', where: 'id = ?', whereArgs: [id]);
   }
 
-  // ============ WEIGHT RECORDS ============
+  // ══════════════════════════════════════════════════════════════════
+  // WEIGHT RECORDS
+  // ══════════════════════════════════════════════════════════════════
 
   Future<String> insertWeightRecord(WeightRecord record) async {
     final db = await database;
-    await db.insert('weight_records', record.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert('weight_records', record.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
     return record.id;
   }
 
-  Future<List<WeightRecord>> getWeightRecordsForSheep(String sheepId) async {
+  Future<List<WeightRecord>> getWeightRecordsForSheep(String animalId) async {
     final db = await database;
-    final maps = await db.query(
-      'weight_records',
-      where: 'sheepId = ?',
-      whereArgs: [sheepId],
-      orderBy: 'date ASC',
-    );
+    final maps = await db.query('weight_records',
+        where: 'sheepId = ?', whereArgs: [animalId], orderBy: 'date ASC');
     return maps.map((m) => WeightRecord.fromMap(m)).toList();
   }
 
-  // ============ BREEDING RECORDS ============
+  // ══════════════════════════════════════════════════════════════════
+  // BREEDING RECORDS
+  // ══════════════════════════════════════════════════════════════════
 
   Future<String> insertBreedingRecord(BreedingRecord record) async {
     final db = await database;
-    await db.insert('breeding_records', record.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert('breeding_records', record.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
     return record.id;
   }
 
   Future<List<BreedingRecord>> getAllBreedingRecords() async {
     final db = await database;
-    final maps = await db.query('breeding_records', orderBy: 'matingDate DESC');
+    final maps =
+        await db.query('breeding_records', orderBy: 'matingDate DESC');
     return maps.map((m) => BreedingRecord.fromMap(m)).toList();
   }
 
-  Future<List<BreedingRecord>> getBreedingRecordsForSheep(String sheepId) async {
+  Future<List<BreedingRecord>> getBreedingRecordsForSheep(
+      String animalId) async {
     final db = await database;
-    final maps = await db.query(
-      'breeding_records',
-      where: 'eweId = ? OR ramId = ?',
-      whereArgs: [sheepId, sheepId],
-      orderBy: 'matingDate DESC',
-    );
+    final maps = await db.query('breeding_records',
+        where: 'eweId = ? OR ramId = ?',
+        whereArgs: [animalId, animalId],
+        orderBy: 'matingDate DESC');
     return maps.map((m) => BreedingRecord.fromMap(m)).toList();
   }
 
   Future<int> updateBreedingRecord(BreedingRecord record) async {
     final db = await database;
-    return db.update('breeding_records', record.toMap(), where: 'id = ?', whereArgs: [record.id]);
+    return db.update('breeding_records', record.toMap(),
+        where: 'id = ?', whereArgs: [record.id]);
   }
 
-  // ============ FINANCIAL RECORDS ============
+  // ══════════════════════════════════════════════════════════════════
+  // FINANCIAL RECORDS
+  // ══════════════════════════════════════════════════════════════════
 
   Future<String> insertFinancialRecord(FinancialRecord record) async {
     final db = await database;
-    await db.insert('financial_records', record.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert('financial_records', record.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
     return record.id;
   }
 
-  Future<List<FinancialRecord>> getAllFinancialRecords({String? type, int? limitDays}) async {
+  Future<List<FinancialRecord>> getAllFinancialRecords(
+      {String? type, int? limitDays}) async {
     final db = await database;
-    String? whereClause;
-    List<dynamic>? whereArgs;
-
+    String? where;
+    List<dynamic>? args;
     if (type != null && limitDays != null) {
-      final since = DateTime.now().subtract(Duration(days: limitDays)).toIso8601String();
-      whereClause = 'type = ? AND date >= ?';
-      whereArgs = [type, since];
+      final since = DateTime.now()
+          .subtract(Duration(days: limitDays))
+          .toIso8601String();
+      where = 'type = ? AND date >= ?';
+      args = [type, since];
     } else if (type != null) {
-      whereClause = 'type = ?';
-      whereArgs = [type];
+      where = 'type = ?';
+      args = [type];
     } else if (limitDays != null) {
-      final since = DateTime.now().subtract(Duration(days: limitDays)).toIso8601String();
-      whereClause = 'date >= ?';
-      whereArgs = [since];
+      final since = DateTime.now()
+          .subtract(Duration(days: limitDays))
+          .toIso8601String();
+      where = 'date >= ?';
+      args = [since];
     }
-
-    final maps = await db.query(
-      'financial_records',
-      where: whereClause,
-      whereArgs: whereArgs,
-      orderBy: 'date DESC',
-    );
+    final maps = await db.query('financial_records',
+        where: where, whereArgs: args, orderBy: 'date DESC');
     return maps.map((m) => FinancialRecord.fromMap(m)).toList();
   }
 
   Future<Map<String, double>> getFinancialSummary() async {
     final db = await database;
     final result = await db.rawQuery('''
-      SELECT 
+      SELECT
         SUM(CASE WHEN type = 'Income' THEN amount ELSE 0 END) as totalIncome,
         SUM(CASE WHEN type = 'Expense' THEN amount ELSE 0 END) as totalExpense
       FROM financial_records
     ''');
     final row = result.first;
     return {
-      'income': (row['totalIncome'] as num?)?.toDouble() ?? 0.0,
-      'expense': (row['totalExpense'] as num?)?.toDouble() ?? 0.0,
+      'income': ((row['totalIncome'] as num?) ?? 0.0).toDouble(),
+      'expense': ((row['totalExpense'] as num?) ?? 0.0).toDouble(),
     };
   }
 
@@ -341,65 +442,103 @@ class DatabaseService {
     return db.delete('financial_records', where: 'id = ?', whereArgs: [id]);
   }
 
-  // ============ FEED RECORDS ============
+  // ══════════════════════════════════════════════════════════════════
+  // CUSTOM SAVED VALUES (breeds, locations, groups per animal type)
+  // ══════════════════════════════════════════════════════════════════
 
-  Future<String> insertFeedRecord(FeedRecord record) async {
+  Future<void> saveCustomValue(String category, String value) async {
+    if (value.trim().isEmpty) return;
     final db = await database;
-    await db.insert('feed_records', record.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
-    return record.id;
+    await db.insert(
+      'custom_values',
+      {'category': category.toLowerCase(), 'value': value.trim()},
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
   }
 
-  Future<List<FeedRecord>> getAllFeedRecords() async {
+  Future<List<String>> getCustomValues(String category) async {
     final db = await database;
-    final maps = await db.query('feed_records', orderBy: 'date DESC');
-    return maps.map((m) => FeedRecord.fromMap(m)).toList();
+    final maps = await db.query('custom_values',
+        where: 'category = ?',
+        whereArgs: [category.toLowerCase()],
+        orderBy: 'value ASC');
+    return maps.map((m) => m['value'] as String).toList();
   }
 
-  // ============ BACKUP / EXPORT ============
+  Future<void> deleteCustomValue(String category, String value) async {
+    final db = await database;
+    await db.delete('custom_values',
+        where: 'category = ? AND value = ?',
+        whereArgs: [category.toLowerCase(), value]);
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // GROUPS / OWNERS
+  // ══════════════════════════════════════════════════════════════════
+
+  Future<void> insertGroup(AnimalGroup group) async {
+    final db = await database;
+    await db.insert('animal_groups', group.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<List<AnimalGroup>> getAllGroups() async {
+    final db = await database;
+    final maps = await db.query('animal_groups', orderBy: 'name ASC');
+    return maps.map((m) => AnimalGroup.fromMap(m)).toList();
+  }
+
+  Future<void> deleteGroup(String id) async {
+    final db = await database;
+    await db.delete('animal_groups', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // BACKUP / EXPORT
+  // ══════════════════════════════════════════════════════════════════
 
   Future<Map<String, dynamic>> exportAllData() async {
     final db = await database;
     return {
-      'sheep': await db.query('sheep'),
+      'animals': await db.query('animals'),
       'health_records': await db.query('health_records'),
       'weight_records': await db.query('weight_records'),
       'breeding_records': await db.query('breeding_records'),
       'financial_records': await db.query('financial_records'),
-      'feed_records': await db.query('feed_records'),
+      'animal_groups': await db.query('animal_groups'),
       'exportedAt': DateTime.now().toIso8601String(),
-      'version': '1.0.0',
+      'version': '2.0.0',
     };
   }
 
   Future<void> importData(Map<String, dynamic> data) async {
     final db = await database;
     await db.transaction((txn) async {
-      // Clear existing data
-      await txn.delete('sheep');
+      await txn.delete('animals');
       await txn.delete('health_records');
       await txn.delete('weight_records');
       await txn.delete('breeding_records');
       await txn.delete('financial_records');
-      await txn.delete('feed_records');
 
-      // Re-insert from backup
-      for (final row in (data['sheep'] as List)) {
-        await txn.insert('sheep', Map<String, dynamic>.from(row));
+      for (final row in (data['animals'] as List? ?? data['sheep'] as List? ?? [])) {
+        await txn.insert('animals', Map<String, dynamic>.from(row),
+            conflictAlgorithm: ConflictAlgorithm.replace);
       }
-      for (final row in (data['health_records'] as List)) {
-        await txn.insert('health_records', Map<String, dynamic>.from(row));
+      for (final row in (data['health_records'] as List? ?? [])) {
+        await txn.insert('health_records', Map<String, dynamic>.from(row),
+            conflictAlgorithm: ConflictAlgorithm.replace);
       }
-      for (final row in (data['weight_records'] as List)) {
-        await txn.insert('weight_records', Map<String, dynamic>.from(row));
+      for (final row in (data['weight_records'] as List? ?? [])) {
+        await txn.insert('weight_records', Map<String, dynamic>.from(row),
+            conflictAlgorithm: ConflictAlgorithm.replace);
       }
-      for (final row in (data['breeding_records'] as List)) {
-        await txn.insert('breeding_records', Map<String, dynamic>.from(row));
+      for (final row in (data['breeding_records'] as List? ?? [])) {
+        await txn.insert('breeding_records', Map<String, dynamic>.from(row),
+            conflictAlgorithm: ConflictAlgorithm.replace);
       }
-      for (final row in (data['financial_records'] as List)) {
-        await txn.insert('financial_records', Map<String, dynamic>.from(row));
-      }
-      for (final row in (data['feed_records'] as List)) {
-        await txn.insert('feed_records', Map<String, dynamic>.from(row));
+      for (final row in (data['financial_records'] as List? ?? [])) {
+        await txn.insert('financial_records', Map<String, dynamic>.from(row),
+            conflictAlgorithm: ConflictAlgorithm.replace);
       }
     });
   }

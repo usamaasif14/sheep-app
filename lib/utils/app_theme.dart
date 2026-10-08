@@ -34,7 +34,7 @@ class AppTheme {
         onBackground: textPrimary,
         error: accentRed,
       ),
-      fontFamily: 'Inter',
+      
       appBarTheme: const AppBarTheme(
         backgroundColor: primaryDark,
         elevation: 0,
@@ -42,7 +42,7 @@ class AppTheme {
           color: textPrimary,
           fontSize: 20,
           fontWeight: FontWeight.w600,
-          fontFamily: 'Inter',
+          
         ),
         iconTheme: IconThemeData(color: textPrimary),
       ),
@@ -64,7 +64,7 @@ class AppTheme {
             borderRadius: BorderRadius.circular(12),
           ),
           textStyle: const TextStyle(
-            fontFamily: 'Inter',
+            
             fontWeight: FontWeight.w600,
             fontSize: 15,
           ),
@@ -117,18 +117,18 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
       textTheme: const TextTheme(
-        displayLarge: TextStyle(color: textPrimary, fontFamily: 'Inter', fontWeight: FontWeight.w700),
-        displayMedium: TextStyle(color: textPrimary, fontFamily: 'Inter', fontWeight: FontWeight.w700),
-        headlineLarge: TextStyle(color: textPrimary, fontFamily: 'Inter', fontWeight: FontWeight.w700),
-        headlineMedium: TextStyle(color: textPrimary, fontFamily: 'Inter', fontWeight: FontWeight.w600),
-        headlineSmall: TextStyle(color: textPrimary, fontFamily: 'Inter', fontWeight: FontWeight.w600),
-        titleLarge: TextStyle(color: textPrimary, fontFamily: 'Inter', fontWeight: FontWeight.w600),
-        titleMedium: TextStyle(color: textPrimary, fontFamily: 'Inter', fontWeight: FontWeight.w500),
-        titleSmall: TextStyle(color: textSecondary, fontFamily: 'Inter', fontWeight: FontWeight.w500),
+        displayLarge: TextStyle(color: textPrimary,  fontWeight: FontWeight.w700),
+        displayMedium: TextStyle(color: textPrimary,  fontWeight: FontWeight.w700),
+        headlineLarge: TextStyle(color: textPrimary,  fontWeight: FontWeight.w700),
+        headlineMedium: TextStyle(color: textPrimary,  fontWeight: FontWeight.w600),
+        headlineSmall: TextStyle(color: textPrimary,  fontWeight: FontWeight.w600),
+        titleLarge: TextStyle(color: textPrimary,  fontWeight: FontWeight.w600),
+        titleMedium: TextStyle(color: textPrimary,  fontWeight: FontWeight.w500),
+        titleSmall: TextStyle(color: textSecondary,  fontWeight: FontWeight.w500),
         bodyLarge: TextStyle(color: textPrimary, fontFamily: 'Inter'),
         bodyMedium: TextStyle(color: textSecondary, fontFamily: 'Inter'),
         bodySmall: TextStyle(color: textMuted, fontFamily: 'Inter'),
-        labelLarge: TextStyle(color: textPrimary, fontFamily: 'Inter', fontWeight: FontWeight.w600),
+        labelLarge: TextStyle(color: textPrimary,  fontWeight: FontWeight.w600),
       ),
     );
   }

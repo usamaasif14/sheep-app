@@ -1,22 +1,19 @@
-// main.dart - App entry point
+// main.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'providers/sheep_provider.dart';
 import 'screens/main_navigation.dart';
 import 'services/notification_service.dart';
+import 'services/firebase_service.dart';
 import 'utils/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Set preferred orientations
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+  await SystemChrome.setPreferredOrientations(
+      [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
 
-  // Set system UI overlay style
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,
@@ -24,18 +21,19 @@ void main() async {
     systemNavigationBarIconBrightness: Brightness.light,
   ));
 
-  // Initialize notifications (safe — errors don't crash the app)
+  // Firebase init — safe, never crashes the app if not configured
+  await FirebaseService.init();
+
+  // Notifications — safe
   try {
     await NotificationService().initialize();
-  } catch (e) {
-    debugPrint('Notification init skipped: $e');
-  }
+  } catch (_) {}
 
-  runApp(const SheepManagerApp());
+  runApp(const FarmManagerApp());
 }
 
-class SheepManagerApp extends StatelessWidget {
-  const SheepManagerApp({super.key});
+class FarmManagerApp extends StatelessWidget {
+  const FarmManagerApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +43,7 @@ class SheepManagerApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => FinanceProvider()..loadRecords()),
       ],
       child: MaterialApp(
-        title: 'Sheep Farm Manager',
+        title: 'Farm Manager',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.darkTheme,
         home: const MainNavigation(),

@@ -416,13 +416,42 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
       if (_setReminder && _nextDueDate != null) {
         await NotificationService().scheduleVaccinationReminder(
           id: _uuid.v4().hashCode,
-          sheepName: widget.sheepName ?? 'Sheep',
+          sheepName: widget.sheepName ?? 'Animal',
           vaccineName: _descController.text.trim(),
           dueDate: _nextDueDate!,
         );
       }
 
-      if (mounted) Navigator.pop(context);
+      // Show in-app success notification
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Health Record Saved',
+                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                      Text('$_type record added successfully',
+                          style: const TextStyle(fontSize: 12, color: Colors.white70)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: AppTheme.accentGreen,
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+        Navigator.pop(context);
+      }
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
