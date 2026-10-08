@@ -17,14 +17,8 @@ dependencies:
   sqflite: ^2.3.0
   path: ^1.8.3
 
-  # Firebase (cloud backup)
-  firebase_core: ^2.24.2
-  firebase_auth: ^4.16.0
-  cloud_firestore: ^4.14.0
-  firebase_storage: ^11.6.0
-
-  # Google Sign-In for backup auth
-  google_sign_in: ^6.2.1
+  # Google Sign-In (disabled - requires Firebase setup)
+  # google_sign_in: ^6.2.1
 
   # Charts and analytics
   fl_chart: ^0.66.2

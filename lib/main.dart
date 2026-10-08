@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'providers/sheep_provider.dart';
 import 'screens/main_navigation.dart';
 import 'services/notification_service.dart';
@@ -25,15 +24,12 @@ void main() async {
     systemNavigationBarIconBrightness: Brightness.light,
   ));
 
-  // Initialize Firebase
+  // Initialize notifications (safe — errors don't crash the app)
   try {
-    await Firebase.initializeApp();
+    await NotificationService().initialize();
   } catch (e) {
-    debugPrint('Firebase init error: $e');
+    debugPrint('Notification init skipped: $e');
   }
-
-  // Initialize notifications
-  await NotificationService().initialize();
 
   runApp(const SheepManagerApp());
 }
