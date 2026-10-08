@@ -12,9 +12,10 @@ import '../services/database_service.dart';
 import '../utils/app_theme.dart';
 
 class AddSheepScreen extends StatefulWidget {
-  final Animal? sheep; // null = new, non-null = edit
+  final Animal? sheep;        // null = new, non-null = edit
+  final Animal? prefillMother; // set when opening from "Gave Birth"
 
-  const AddSheepScreen({super.key, this.sheep});
+  const AddSheepScreen({super.key, this.sheep, this.prefillMother});
 
   @override
   State<AddSheepScreen> createState() => _AddSheepScreenState();
@@ -71,13 +72,15 @@ class _AddSheepScreenState extends State<AddSheepScreen> {
   void initState() {
     super.initState();
     final a = widget.sheep;
+    final m = widget.prefillMother; // pre-fill from "Gave Birth"
+
     _tagCtrl = TextEditingController(text: a?.tagNumber ?? '');
     _nameCtrl = TextEditingController(text: a?.name ?? '');
-    _breedCtrl = TextEditingController(text: a?.breed ?? '');
+    _breedCtrl = TextEditingController(text: a?.breed ?? (m?.breed ?? ''));
     _weightCtrl = TextEditingController(text: a?.weight != null && a!.weight > 0 ? a.weight.toString() : '');
     _colorCtrl = TextEditingController(text: a?.color ?? '');
     _notesCtrl = TextEditingController(text: a?.notes ?? '');
-    _locationCtrl = TextEditingController(text: a?.birthLocation ?? '');
+    _locationCtrl = TextEditingController(text: a?.birthLocation ?? (m?.birthLocation ?? ''));
     _costCtrl = TextEditingController(text: a?.purchaseCost != null ? a!.purchaseCost.toString() : '');
 
     if (a != null) {
@@ -89,14 +92,20 @@ class _AddSheepScreenState extends State<AddSheepScreen> {
       _motherId = a.motherId;
       _fatherId = a.fatherId;
       _selectedGroupOwner = a.groupOwner;
-
-      // Custom animal type?
       if (!kDefaultAnimalTypes.contains(a.animalType)) {
         _customAnimalType = true;
         _customTypeCtrl.text = a.animalType;
       }
-      // Custom breed?
       _isCustomBreed = a.breed.isNotEmpty;
+    } else if (m != null) {
+      // Pre-fill from mother animal
+      _animalType = m.animalType;
+      _motherId = m.id;
+      _selectedGroupOwner = m.groupOwner;
+      if (!kDefaultAnimalTypes.contains(m.animalType)) {
+        _customAnimalType = true;
+        _customTypeCtrl.text = m.animalType;
+      }
     }
 
     _loadDropdownData();
@@ -204,7 +213,7 @@ class _AddSheepScreenState extends State<AddSheepScreen> {
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))]),
               const SizedBox(height: 12),
-              _buildTextField(ctrl: _costCtrl, label: 'Purchase / Birth Cost (Rs) — Optional',
+              _buildTextField(ctrl: _costCtrl, label: 'Purchase / Birth Cost (PKR) — Optional',
                   hint: '15000', icon: Icons.currency_rupee_rounded,
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))]),
@@ -780,6 +789,22 @@ class _AddSheepScreenState extends State<AddSheepScreen> {
     );
   }
 
+  String? _getMotherName() {
+    if (widget.prefillMother != null) {
+      return widget.prefillMother!.name.isNotEmpty ? widget.prefillMother!.name : widget.prefillMother!.tagNumber;
+    }
+    if (_motherId == null) return null;
+    try {
+      final f = _females.firstWhere((a) => a.id == _motherId);
+      return f.name.isNotEmpty ? f.name : f.tagNumber;
+    } catch (_) {}
+    try {
+      final m = _males.firstWhere((a) => a.id == _motherId);
+      return m.name.isNotEmpty ? m.name : m.tagNumber;
+    } catch (_) {}
+    return null;
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -826,6 +851,7 @@ class _AddSheepScreenState extends State<AddSheepScreen> {
         birthLocation: location.isEmpty ? null : location,
         groupOwner: _selectedGroupOwner,
         motherId: _motherId,
+        motherName: _getMotherName(),
         fatherId: _fatherId,
         photoPath: _photoPath,
         notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),

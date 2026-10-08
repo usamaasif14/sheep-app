@@ -60,7 +60,7 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
   @override
   Widget build(BuildContext context) {
     final finance = context.watch<FinanceProvider>();
-    final currencyFormat = NumberFormat.currency(symbol: 'Rs ', decimalDigits: 0);
+    final currencyFormat = NumberFormat.currency(symbol: 'PKR ', decimalDigits: 0);
 
     return Scaffold(
       backgroundColor: AppTheme.primaryDark,
@@ -839,7 +839,7 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
                           Navigator.pop(modalContext);
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Saved $selectedType: Rs ${amt.toStringAsFixed(0)}'),
+                              content: Text('Saved $selectedType: PKR ${amt.toStringAsFixed(0)}'),
                               backgroundColor: AppTheme.accentGreen,
                             ),
                           );

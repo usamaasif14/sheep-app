@@ -21,7 +21,7 @@ class _SheepListScreenState extends State<SheepListScreen> {
   String _selectedGender = 'All';
   bool _isGridView = false;
 
-  final _statusOptions = ['All', 'Active', 'Sold', 'Deceased', 'Quarantine'];
+  final _statusOptions = ['All', 'Active', 'Pregnant', 'Gave Birth', 'Sold', 'Deceased', 'Quarantine'];
 
   @override
   void initState() {
