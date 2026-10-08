@@ -43,7 +43,7 @@ class FarmManagerApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => FinanceProvider()..loadRecords()),
       ],
       child: MaterialApp(
-        title: 'Farm Manager',
+        title: 'Animal Management',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.darkTheme,
         home: const MainNavigation(),

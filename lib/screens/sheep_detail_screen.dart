@@ -158,7 +158,7 @@ class _SheepDetailScreenState extends State<SheepDetailScreen>
   // ── Status action buttons ────────────────────────────────────────
   Widget _statusActions(BuildContext context) {
     if (_animal.status == 'Active' || _animal.status == 'Gave Birth') {
-      return _actionBtn('🤰 Mark as Pregnant', const Color(0xFFEC407A), () => _updateStatus(context, 'Pregnant'));
+      return _actionBtn('🤰 Mark as Pregnant', const Color(0xFFEC407A), () => _markAsPregnant(context));
     }
     if (_animal.status == 'Pregnant') {
       return Row(children: [
@@ -192,16 +192,150 @@ class _SheepDetailScreenState extends State<SheepDetailScreen>
     setState(() => _animal = updated);
   }
 
+  Future<void> _markAsPregnant(BuildContext context) async {
+    // First update status
+    await _updateStatus(context, 'Pregnant');
+    if (!mounted) return;
+    // Open breeding form pre-filled with this animal
+    await _showAddBreedingSheet(context);
+  }
+
+  Future<void> _showAddBreedingSheet(BuildContext context) async {
+    final provider = context.read<SheepProvider>();
+    final allAnimals = provider.allAnimals;
+    final rams = allAnimals.where((a) => a.gender == 'Male' && ['Active','Pregnant','Gave Birth'].contains(a.status)).toList();
+
+    String? selectedRamId;
+    DateTime matingDate = DateTime.now();
+    final notesCtrl = TextEditingController();
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppTheme.cardBg,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => Padding(
+          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+          child: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                const Text('Log Mating Event', style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+                IconButton(icon: const Icon(Icons.close_rounded, color: AppTheme.textMuted), onPressed: () => Navigator.pop(ctx)),
+              ]),
+              const SizedBox(height: 8),
+              // Pre-filled ewe (this animal) - shown as read-only
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(color: AppTheme.primaryLight, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFEC407A).withOpacity(0.4))),
+                child: Row(children: [
+                  const Icon(Icons.female_rounded, color: Color(0xFFEC407A), size: 20),
+                  const SizedBox(width: 10),
+                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Text('Female', style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+                    Text(
+                      '${_animal.tagNumber}${_animal.name.isNotEmpty ? " — ${_animal.name}" : ""}',
+                      style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
+                    ),
+                  ]),
+                ]),
+              ),
+              const SizedBox(height: 12),
+              // Ram selector
+              DropdownButtonFormField<String>(
+                value: selectedRamId,
+                hint: const Text('Select Male (Optional)'),
+                decoration: InputDecoration(
+                  labelText: 'Male Animal',
+                  prefixIcon: const Icon(Icons.male_rounded, color: AppTheme.accentBlue),
+                  filled: true, fillColor: AppTheme.primaryLight,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                dropdownColor: AppTheme.cardBg,
+                items: rams.map((r) => DropdownMenuItem(
+                  value: r.id,
+                  child: Text('${r.tagNumber}${r.name.isNotEmpty ? " — ${r.name}" : ""} (${r.animalType})',
+                      style: const TextStyle(color: AppTheme.textPrimary)),
+                )).toList(),
+                onChanged: (v) => setS(() => selectedRamId = v),
+              ),
+              const SizedBox(height: 12),
+              // Mating date
+              GestureDetector(
+                onTap: () async {
+                  final d = await showDatePicker(
+                    context: ctx, initialDate: matingDate,
+                    firstDate: DateTime(2020), lastDate: DateTime.now(),
+                    builder: (c, child) => Theme(data: AppTheme.darkTheme, child: child!),
+                  );
+                  if (d != null) setS(() => matingDate = d);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(color: AppTheme.primaryLight, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.cardBorder)),
+                  child: Row(children: [
+                    const Icon(Icons.calendar_today_rounded, color: AppTheme.textSecondary, size: 18),
+                    const SizedBox(width: 12),
+                    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      const Text('Mating Date', style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                      Text(DateFormat('d MMMM yyyy').format(matingDate), style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w500)),
+                    ]),
+                  ]),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: notesCtrl,
+                style: const TextStyle(color: AppTheme.textPrimary),
+                maxLines: 2,
+                decoration: const InputDecoration(labelText: 'Notes (Optional)', prefixIcon: Icon(Icons.notes_rounded)),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    final expectedLambing = matingDate.add(const Duration(days: 147));
+                    final record = BreedingRecord(
+                      id: const Uuid().v4(),
+                      eweId: _animal.id,
+                      ramId: selectedRamId,
+                      matingDate: matingDate,
+                      expectedLambingDate: expectedLambing,
+                      status: 'Mated',
+                      notes: notesCtrl.text.trim().isEmpty ? null : notesCtrl.text.trim(),
+                      createdAt: DateTime.now(),
+                    );
+                    await DatabaseService().insertBreedingRecord(record);
+                    if (mounted) {
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('Mating event logged!'),
+                        backgroundColor: Color(0xFFEC407A),
+                      ));
+                    }
+                  },
+                  child: const Text('Save Mating Event'),
+                ),
+              ),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _handleGaveBirth(BuildContext context) async {
     // Update mother status
     await _updateStatus(context, 'Gave Birth');
     if (!mounted) return;
-    // Open add baby form pre-filled with mother info
+    // Open add baby form pre-filled with mother info and today as birth date
     await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => AddSheepScreen(
           prefillMother: _animal,
+          prefillDob: DateTime.now(), // auto-fill birth date to today
         ),
       ),
     );
@@ -230,6 +364,9 @@ class _SheepDetailScreenState extends State<SheepDetailScreen>
       if (_animal.birthLocation?.isNotEmpty == true) _Info('Location', _animal.birthLocation!, Icons.location_on_rounded),
       if (_animal.groupOwner?.isNotEmpty == true) _Info('Owner/Group', _animal.groupOwner!, Icons.group_rounded),
       if (_animal.motherName?.isNotEmpty == true) _Info('Mother', _animal.motherName!, Icons.female_rounded),
+      _Info('Ownership', _animal.ownershipType ?? 'Personal', Icons.person_rounded),
+      if (_animal.ownershipType == 'Partnership' && _animal.partnerName?.isNotEmpty == true)
+        _Info('Partner', _animal.partnerName!, Icons.handshake_rounded),
       _Info('Added', DateFormat('d MMM yyyy').format(_animal.dateAdded), Icons.add_circle_rounded),
     ];
 

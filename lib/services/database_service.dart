@@ -20,7 +20,21 @@ class DatabaseService {
   Future<Database> _initDatabase() async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, 'farm_manager.db');
-    return openDatabase(path, version: 4, onCreate: _createTables, onUpgrade: _onUpgrade);
+    return openDatabase(path, version: 4, onCreate: _createTables, onUpgrade: _onUpgrade, onOpen: _ensureColumns);
+  }
+
+  // Called every time DB is opened — ensures all columns exist regardless of migration history
+  Future<void> _ensureColumns(Database db) async {
+    final cols = ['animalType TEXT DEFAULT \'Sheep\'', 'purchaseCost REAL',
+      'birthLocation TEXT', 'groupOwner TEXT', 'ownershipType TEXT DEFAULT \'Personal\'',
+      'partnerName TEXT', 'motherId TEXT', 'motherName TEXT', 'fatherId TEXT',
+      'photoPath TEXT', 'notes TEXT'];
+    for (final col in cols) {
+      try { await db.execute('ALTER TABLE animals ADD COLUMN $col'); } catch (_) {}
+    }
+    try { await db.execute('CREATE TABLE IF NOT EXISTS custom_values (id INTEGER PRIMARY KEY AUTOINCREMENT, category TEXT NOT NULL, value TEXT NOT NULL, UNIQUE(category, value))'); } catch (_) {}
+    try { await db.execute('CREATE TABLE IF NOT EXISTS animal_groups (id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT, createdAt TEXT NOT NULL)'); } catch (_) {}
+    try { await db.execute('CREATE TABLE IF NOT EXISTS animal_events (id TEXT PRIMARY KEY, animalId TEXT NOT NULL, eventType TEXT NOT NULL, title TEXT NOT NULL, description TEXT, date TEXT NOT NULL, cost REAL, createdAt TEXT NOT NULL)'); } catch (_) {}
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -37,6 +51,8 @@ class DatabaseService {
     }
     if (oldVersion < 4) {
       try { await db.execute('ALTER TABLE animals ADD COLUMN motherName TEXT'); } catch (_) {}
+      try { await db.execute('ALTER TABLE animals ADD COLUMN ownershipType TEXT DEFAULT "Personal"'); } catch (_) {}
+      try { await db.execute('ALTER TABLE animals ADD COLUMN partnerName TEXT'); } catch (_) {}
       try { await db.execute('CREATE TABLE IF NOT EXISTS animal_events (id TEXT PRIMARY KEY, animalId TEXT NOT NULL, eventType TEXT NOT NULL, title TEXT NOT NULL, description TEXT, date TEXT NOT NULL, cost REAL, createdAt TEXT NOT NULL)'); } catch (_) {}
     }
   }
@@ -49,6 +65,7 @@ class DatabaseService {
         dateOfBirth TEXT NOT NULL, weight REAL, color TEXT,
         status TEXT DEFAULT 'Active', purchaseCost REAL,
         birthLocation TEXT, groupOwner TEXT,
+        ownershipType TEXT DEFAULT 'Personal', partnerName TEXT,
         motherId TEXT, motherName TEXT, fatherId TEXT,
         photoPath TEXT, notes TEXT,
         dateAdded TEXT NOT NULL, lastUpdated TEXT NOT NULL

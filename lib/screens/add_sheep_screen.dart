@@ -14,8 +14,9 @@ import '../utils/app_theme.dart';
 class AddSheepScreen extends StatefulWidget {
   final Animal? sheep;        // null = new, non-null = edit
   final Animal? prefillMother; // set when opening from "Gave Birth"
+  final DateTime? prefillDob;  // auto-fill date of birth (today when baby is born)
 
-  const AddSheepScreen({super.key, this.sheep, this.prefillMother});
+  const AddSheepScreen({super.key, this.sheep, this.prefillMother, this.prefillDob});
 
   @override
   State<AddSheepScreen> createState() => _AddSheepScreenState();
@@ -54,6 +55,8 @@ class _AddSheepScreenState extends State<AddSheepScreen> {
   List<String> _savedLocations = [];
   List<AnimalGroup> _groups = [];
   String? _selectedGroupOwner;
+  String _ownershipType = 'Personal';
+  final _partnerNameCtrl = TextEditingController();
 
   // Parent selection
   String? _motherId;
@@ -92,6 +95,8 @@ class _AddSheepScreenState extends State<AddSheepScreen> {
       _motherId = a.motherId;
       _fatherId = a.fatherId;
       _selectedGroupOwner = a.groupOwner;
+      _ownershipType = a.ownershipType ?? 'Personal';
+      _partnerNameCtrl.text = a.partnerName ?? '';
       if (!kDefaultAnimalTypes.contains(a.animalType)) {
         _customAnimalType = true;
         _customTypeCtrl.text = a.animalType;
@@ -106,6 +111,12 @@ class _AddSheepScreenState extends State<AddSheepScreen> {
         _customAnimalType = true;
         _customTypeCtrl.text = m.animalType;
       }
+      // Use prefill date (today = birth date) if provided
+      if (widget.prefillDob != null) {
+        _dateOfBirth = widget.prefillDob!;
+      }
+    } else if (widget.prefillDob != null) {
+      _dateOfBirth = widget.prefillDob!;
     }
 
     _loadDropdownData();
@@ -136,7 +147,7 @@ class _AddSheepScreenState extends State<AddSheepScreen> {
   @override
   void dispose() {
     for (final c in [_tagCtrl, _nameCtrl, _breedCtrl, _weightCtrl,
-        _colorCtrl, _notesCtrl, _locationCtrl, _costCtrl, _customTypeCtrl]) {
+        _colorCtrl, _notesCtrl, _locationCtrl, _costCtrl, _customTypeCtrl, _partnerNameCtrl]) {
       c.dispose();
     }
     super.dispose();
@@ -225,6 +236,10 @@ class _AddSheepScreenState extends State<AddSheepScreen> {
               _buildLocationField(),
               const SizedBox(height: 12),
               _buildGroupField(),
+              const SizedBox(height: 16),
+              _buildSectionTitle('Ownership'),
+              const SizedBox(height: 12),
+              _buildOwnershipField(),
               const SizedBox(height: 16),
 
               // ── Parents / Offspring ──
@@ -516,6 +531,98 @@ class _AddSheepScreenState extends State<AddSheepScreen> {
           tooltip: 'Add new group',
           onPressed: _addGroupDialog,
         ),
+      ],
+    );
+  }
+
+  Widget _buildOwnershipField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Toggle: Personal / Partnership
+        Row(children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() { _ownershipType = 'Personal'; _partnerNameCtrl.clear(); }),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                decoration: BoxDecoration(
+                  color: _ownershipType == 'Personal' ? AppTheme.accent.withOpacity(0.15) : AppTheme.cardBg,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _ownershipType == 'Personal' ? AppTheme.accent : AppTheme.cardBorder,
+                    width: _ownershipType == 'Personal' ? 2 : 1,
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Icon(Icons.person_rounded, size: 18,
+                      color: _ownershipType == 'Personal' ? AppTheme.accent : AppTheme.textMuted),
+                  const SizedBox(width: 6),
+                  Text('Personal',
+                      style: TextStyle(
+                        color: _ownershipType == 'Personal' ? AppTheme.accent : AppTheme.textMuted,
+                        fontWeight: _ownershipType == 'Personal' ? FontWeight.w700 : FontWeight.normal,
+                      )),
+                ]),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _ownershipType = 'Partnership'),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                decoration: BoxDecoration(
+                  color: _ownershipType == 'Partnership' ? AppTheme.accentBlue.withOpacity(0.15) : AppTheme.cardBg,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _ownershipType == 'Partnership' ? AppTheme.accentBlue : AppTheme.cardBorder,
+                    width: _ownershipType == 'Partnership' ? 2 : 1,
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Icon(Icons.handshake_rounded, size: 18,
+                      color: _ownershipType == 'Partnership' ? AppTheme.accentBlue : AppTheme.textMuted),
+                  const SizedBox(width: 6),
+                  Text('Partnership',
+                      style: TextStyle(
+                        color: _ownershipType == 'Partnership' ? AppTheme.accentBlue : AppTheme.textMuted,
+                        fontWeight: _ownershipType == 'Partnership' ? FontWeight.w700 : FontWeight.normal,
+                      )),
+                ]),
+              ),
+            ),
+          ),
+        ]),
+        // Partner name field (shown only for Partnership)
+        if (_ownershipType == 'Partnership') ...[
+          const SizedBox(height: 10),
+          TextFormField(
+            controller: _partnerNameCtrl,
+            style: const TextStyle(color: AppTheme.textPrimary),
+            decoration: InputDecoration(
+              labelText: 'Partner Name *',
+              hintText: 'e.g., Muhammad Ali',
+              prefixIcon: const Icon(Icons.handshake_rounded, size: 20, color: AppTheme.accentBlue),
+              filled: true,
+              fillColor: AppTheme.primaryLight,
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppTheme.accentBlue)),
+              focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppTheme.accentBlue, width: 2)),
+            ),
+            validator: (v) => _ownershipType == 'Partnership' && (v == null || v.trim().isEmpty)
+                ? 'Partner name is required for Partnership'
+                : null,
+          ),
+        ],
       ],
     );
   }
@@ -850,6 +957,10 @@ class _AddSheepScreenState extends State<AddSheepScreen> {
         purchaseCost: double.tryParse(_costCtrl.text),
         birthLocation: location.isEmpty ? null : location,
         groupOwner: _selectedGroupOwner,
+        ownershipType: _ownershipType,
+        partnerName: _ownershipType == 'Partnership' && _partnerNameCtrl.text.trim().isNotEmpty
+            ? _partnerNameCtrl.text.trim()
+            : null,
         motherId: _motherId,
         motherName: _getMotherName(),
         fatherId: _fatherId,

@@ -104,6 +104,15 @@ class SheepCard extends StatelessWidget {
                   Text('Mother: ${sheep.motherName}', style: const TextStyle(color: Color(0xFFEC407A), fontSize: 11)),
                 ]),
               ],
+              // Partnership badge
+              if (sheep.ownershipType == 'Partnership' && sheep.partnerName != null) ...[
+                const SizedBox(height: 3),
+                Row(children: [
+                  const Icon(Icons.handshake_rounded, size: 11, color: AppTheme.accentBlue),
+                  const SizedBox(width: 3),
+                  Text('Partner: ${sheep.partnerName}', style: const TextStyle(color: AppTheme.accentBlue, fontSize: 11)),
+                ]),
+              ],
             ]),
           ),
           const SizedBox(width: 4),

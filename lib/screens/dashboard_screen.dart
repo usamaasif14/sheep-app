@@ -84,7 +84,7 @@ class DashboardScreen extends StatelessWidget {
                     style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
                   ),
                   const Text(
-                    'Farm Manager',
+                    'Animal Management',
                     style: TextStyle(
                         color: AppTheme.textPrimary,
                         fontSize: 24,

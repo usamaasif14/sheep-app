@@ -39,6 +39,8 @@ class Animal {
   double? purchaseCost;
   String? birthLocation;
   String? groupOwner;
+  String? ownershipType; // 'Personal' | 'Partnership'
+  String? partnerName;   // partner's name when ownership is Partnership
   String? motherId;
   String? motherName; // denormalized for fast display
   String? fatherId;
@@ -61,6 +63,8 @@ class Animal {
     this.purchaseCost,
     this.birthLocation,
     this.groupOwner,
+    this.ownershipType = 'Personal',
+    this.partnerName,
     this.motherId,
     this.motherName,
     this.fatherId,
@@ -102,6 +106,8 @@ class Animal {
         'purchaseCost': purchaseCost,
         'birthLocation': birthLocation,
         'groupOwner': groupOwner,
+        'ownershipType': ownershipType ?? 'Personal',
+        'partnerName': partnerName,
         'motherId': motherId,
         'motherName': motherName,
         'fatherId': fatherId,
@@ -125,6 +131,8 @@ class Animal {
         purchaseCost: (map['purchaseCost'] as num?)?.toDouble(),
         birthLocation: map['birthLocation'] as String?,
         groupOwner: map['groupOwner'] as String?,
+        ownershipType: (map['ownershipType'] as String?) ?? 'Personal',
+        partnerName: map['partnerName'] as String?,
         motherId: map['motherId'] as String?,
         motherName: map['motherName'] as String?,
         fatherId: map['fatherId'] as String?,
@@ -147,6 +155,8 @@ class Animal {
     double? purchaseCost,
     String? birthLocation,
     String? groupOwner,
+    String? ownershipType,
+    String? partnerName,
     String? motherId,
     String? motherName,
     String? fatherId,
@@ -168,6 +178,8 @@ class Animal {
         purchaseCost: purchaseCost ?? this.purchaseCost,
         birthLocation: birthLocation ?? this.birthLocation,
         groupOwner: groupOwner ?? this.groupOwner,
+        ownershipType: ownershipType ?? this.ownershipType,
+        partnerName: partnerName ?? this.partnerName,
         motherId: motherId ?? this.motherId,
         motherName: motherName ?? this.motherName,
         fatherId: fatherId ?? this.fatherId,

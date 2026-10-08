@@ -152,6 +152,7 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
                   icon: Icons.receipt_long_rounded,
                 ),
                 const SizedBox(height: 12),
+                _buildPurchaseCostSection(),
               ]),
             ),
           ),
@@ -341,6 +342,50 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
         fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
         fontSize: 12,
       ),
+    );
+  }
+
+  Widget _buildPurchaseCostSection() {
+    return Consumer<SheepProvider>(
+      builder: (context, sheep, _) {
+        final animals = sheep.allAnimals.where((a) => a.purchaseCost != null && a.purchaseCost! > 0).toList();
+        if (animals.isEmpty || _typeFilter == 'Income') return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SectionHeader(title: 'Animal Purchase Costs', icon: Icons.shopping_cart_rounded),
+            const SizedBox(height: 8),
+            ...animals.map((a) => Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppTheme.cardBg,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppTheme.cardBorder),
+              ),
+              child: Row(children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: AppTheme.accentRed.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
+                  child: const Icon(Icons.pets_rounded, color: AppTheme.accentRed, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                    const Text('Animal Purchase', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 14)),
+                    Text('- PKR ${a.purchaseCost!.toStringAsFixed(0)}', style: const TextStyle(color: AppTheme.accentRed, fontWeight: FontWeight.w700, fontSize: 14)),
+                  ]),
+                  Text('${a.tagNumber}${a.name.isNotEmpty ? " — ${a.name}" : ""} (${a.animalType})',
+                      style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                  Text(DateFormat('d MMM yyyy').format(a.dateAdded),
+                      style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+                ])),
+              ]),
+            )).toList(),
+            const SizedBox(height: 16),
+          ],
+        );
+      },
     );
   }
 

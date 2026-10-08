@@ -56,6 +56,8 @@ class _BreedingScreenState extends State<BreedingScreen> {
               delegate: SliverChildListDelegate([
                 _buildBreedingStats(),
                 const SizedBox(height: 20),
+                _buildPregnantAnimalsSection(),
+                const SizedBox(height: 16),
                 const SectionHeader(
                     title: 'Breeding History', icon: Icons.history_rounded),
                 const SizedBox(height: 12),
@@ -119,6 +121,54 @@ class _BreedingScreenState extends State<BreedingScreen> {
           icon: Icons.child_care_rounded,
         ),
       ],
+    );
+  }
+
+  Widget _buildPregnantAnimalsSection() {
+    return Consumer<SheepProvider>(
+      builder: (context, provider, _) {
+        final pregnant = provider.allAnimals.where((a) => a.status == 'Pregnant').toList();
+        if (pregnant.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              const Icon(Icons.pregnant_woman_rounded, color: Color(0xFFEC407A), size: 18),
+              const SizedBox(width: 8),
+              Text('Pregnant (${pregnant.length})', style: const TextStyle(color: Color(0xFFEC407A), fontWeight: FontWeight.w700, fontSize: 15)),
+            ]),
+            const SizedBox(height: 10),
+            ...pregnant.map((a) => Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppTheme.cardBg,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFEC407A).withOpacity(0.35)),
+              ),
+              child: Row(children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: const Color(0xFFEC407A).withOpacity(0.12), shape: BoxShape.circle),
+                  child: const Icon(Icons.pregnant_woman_rounded, color: Color(0xFFEC407A), size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('${a.tagNumber}${a.name.isNotEmpty ? " — ${a.name}" : ""}',
+                      style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 14)),
+                  Text('${a.animalType} · ${a.breed.isEmpty ? "Unknown breed" : a.breed} · ${a.ageDisplay}',
+                      style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                ])),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(color: const Color(0xFFEC407A).withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+                  child: const Text('🤰 Pregnant', style: TextStyle(color: Color(0xFFEC407A), fontSize: 11, fontWeight: FontWeight.w600)),
+                ),
+              ]),
+            )).toList(),
+          ],
+        );
+      },
     );
   }
 
