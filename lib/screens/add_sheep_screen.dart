@@ -39,8 +39,9 @@ class _AddSheepScreenState extends State<AddSheepScreen> {
 
   final List<String> _breeds = [
     'Merino', 'Suffolk', 'Dorper', 'Corriedale', 'Romney',
-    'Texel', 'Border Leicester', 'Jacob', 'Rambouillet', 'Other'
+    'Texel', 'Border Leicester', 'Jacob', 'Rambouillet', 'Other (type manually)',
   ];
+  bool _isCustomBreed = false;
 
   final List<String> _colors = ['White', 'Black', 'Brown', 'Grey', 'Mixed', 'Spotted'];
 
@@ -59,6 +60,10 @@ class _AddSheepScreenState extends State<AddSheepScreen> {
       _status = s.status;
       _dateOfBirth = s.dateOfBirth;
       _photoPath = s.photoPath;
+      // If editing and breed is not in standard list, switch to manual mode
+      if (s.breed.isNotEmpty && !_breeds.contains(s.breed)) {
+        _isCustomBreed = true;
+      }
     }
   }
 
@@ -279,21 +284,71 @@ class _AddSheepScreenState extends State<AddSheepScreen> {
   }
 
   Widget _buildBreedField() {
-    return DropdownButtonFormField<String>(
-      value: _breeds.contains(_breedController.text) ? _breedController.text : null,
-      decoration: InputDecoration(
-        labelText: 'Breed',
-        prefixIcon: const Icon(Icons.category_rounded, size: 20),
-        filled: true,
-        fillColor: AppTheme.primaryLight,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppTheme.cardBorder),
-        ),
-      ),
-      dropdownColor: AppTheme.cardBg,
-      items: _breeds.map((b) => DropdownMenuItem(value: b, child: Text(b))).toList(),
-      onChanged: (v) => _breedController.text = v ?? '',
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (!_isCustomBreed)
+          DropdownButtonFormField<String>(
+            value: _breeds.contains(_breedController.text) ? _breedController.text : null,
+            decoration: InputDecoration(
+              labelText: 'Breed',
+              prefixIcon: const Icon(Icons.category_rounded, size: 20),
+              filled: true,
+              fillColor: AppTheme.primaryLight,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppTheme.cardBorder),
+              ),
+            ),
+            dropdownColor: AppTheme.cardBg,
+            items: _breeds.map((b) => DropdownMenuItem(value: b, child: Text(b))).toList(),
+            onChanged: (v) {
+              if (v == 'Other (type manually)') {
+                setState(() {
+                  _isCustomBreed = true;
+                  _breedController.clear();
+                });
+              } else {
+                _breedController.text = v ?? '';
+              }
+            },
+          )
+        else
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _breedController,
+                  style: const TextStyle(color: AppTheme.textPrimary),
+                  decoration: InputDecoration(
+                    labelText: 'Breed (custom)',
+                    hintText: 'e.g., Awassi, Karakul...',
+                    prefixIcon: const Icon(Icons.category_rounded, size: 20),
+                    filled: true,
+                    fillColor: AppTheme.primaryLight,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppTheme.cardBorder),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: TextButton(
+                  onPressed: () => setState(() {
+                    _isCustomBreed = false;
+                    _breedController.clear();
+                  }),
+                  style: TextButton.styleFrom(foregroundColor: AppTheme.accent),
+                  child: const Text('List', style: TextStyle(fontSize: 12)),
+                ),
+              ),
+            ],
+          ),
+      ],
     );
   }
 

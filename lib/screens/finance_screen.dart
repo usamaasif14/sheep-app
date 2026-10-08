@@ -24,7 +24,7 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
   String _typeFilter = 'All'; // 'All', 'Income', 'Expense'
   String _selectedCategory = 'All';
 
-  final List<String> _incomeCategories = [
+  List<String> _incomeCategories = [
     'Sheep Sale',
     'Wool & Shearing',
     'Meat Sale',
@@ -34,7 +34,7 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
     'Other Income',
   ];
 
-  final List<String> _expenseCategories = [
+  List<String> _expenseCategories = [
     'Feed & Fodder',
     'Veterinary & Medicine',
     'Vaccinations',
@@ -79,6 +79,11 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
               ),
             ),
             actions: [
+              IconButton(
+                icon: const Icon(Icons.tune_rounded, color: AppTheme.textSecondary),
+                onPressed: () => _showManageCategoriesDialog(context),
+                tooltip: 'Manage Categories',
+              ),
               IconButton(
                 icon: const Icon(Icons.add_circle_outline_rounded, color: AppTheme.accent),
                 onPressed: () => _showAddTransactionModal(context),
@@ -852,6 +857,27 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
     );
   }
 
+  void _showManageCategoriesDialog(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppTheme.cardBg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => _ManageCategoriesSheet(
+        incomeCategories: List<String>.from(_incomeCategories),
+        expenseCategories: List<String>.from(_expenseCategories),
+        onSave: (income, expense) {
+          setState(() {
+            _incomeCategories = income;
+            _expenseCategories = expense;
+          });
+        },
+      ),
+    );
+  }
+
   Future<void> _confirmDelete(String id) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -873,5 +899,179 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
     if (confirmed == true && mounted) {
       await context.read<FinanceProvider>().deleteRecord(id);
     }
+  }
+}
+
+// ── Manage Categories Bottom Sheet ──────────────────────────────────────────
+
+class _ManageCategoriesSheet extends StatefulWidget {
+  final List<String> incomeCategories;
+  final List<String> expenseCategories;
+  final void Function(List<String> income, List<String> expense) onSave;
+
+  const _ManageCategoriesSheet({
+    required this.incomeCategories,
+    required this.expenseCategories,
+    required this.onSave,
+  });
+
+  @override
+  State<_ManageCategoriesSheet> createState() => _ManageCategoriesSheetState();
+}
+
+class _ManageCategoriesSheetState extends State<_ManageCategoriesSheet>
+    with SingleTickerProviderStateMixin {
+  late TabController _tab;
+  late List<String> _income;
+  late List<String> _expense;
+  final _newCatController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _tab = TabController(length: 2, vsync: this);
+    _income = List<String>.from(widget.incomeCategories);
+    _expense = List<String>.from(widget.expenseCategories);
+  }
+
+  @override
+  void dispose() {
+    _tab.dispose();
+    _newCatController.dispose();
+    super.dispose();
+  }
+
+  List<String> get _current => _tab.index == 0 ? _income : _expense;
+
+  void _addCategory() {
+    final name = _newCatController.text.trim();
+    if (name.isEmpty) return;
+    if (_current.contains(name)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Category already exists'), backgroundColor: AppTheme.accentRed),
+      );
+      return;
+    }
+    setState(() {
+      if (_tab.index == 0) {
+        _income.add(name);
+      } else {
+        _expense.add(name);
+      }
+      _newCatController.clear();
+    });
+  }
+
+  void _removeCategory(String name) {
+    setState(() {
+      if (_tab.index == 0) {
+        _income.remove(name);
+      } else {
+        _expense.remove(name);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Manage Categories',
+                style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+              TextButton(
+                onPressed: () {
+                  widget.onSave(_income, _expense);
+                  Navigator.pop(context);
+                },
+                child: const Text('Done', style: TextStyle(color: AppTheme.accent, fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          TabBar(
+            controller: _tab,
+            indicatorColor: AppTheme.accent,
+            labelColor: AppTheme.accent,
+            unselectedLabelColor: AppTheme.textMuted,
+            labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+            onTap: (_) => setState(() {}),
+            tabs: const [Tab(text: 'Income'), Tab(text: 'Expense')],
+          ),
+          const SizedBox(height: 12),
+          // Add new category row
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _newCatController,
+                  style: const TextStyle(color: AppTheme.textPrimary),
+                  onSubmitted: (_) => _addCategory(),
+                  decoration: InputDecoration(
+                    hintText: 'New category name...',
+                    hintStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                    filled: true,
+                    fillColor: AppTheme.primaryLight,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: AppTheme.cardBorder),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              ElevatedButton(
+                onPressed: _addCategory,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.accent,
+                  foregroundColor: AppTheme.primaryDark,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: const Icon(Icons.add_rounded, size: 22),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Category list — limit height so it scrolls nicely
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 300),
+            child: _current.isEmpty
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Text('No categories. Add one above.', style: TextStyle(color: AppTheme.textMuted)),
+                    ),
+                  )
+                : ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: _current.length,
+                    itemBuilder: (ctx, i) {
+                      final cat = _current[i];
+                      return ListTile(
+                        dense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                        leading: const Icon(Icons.label_outline_rounded, color: AppTheme.accent, size: 18),
+                        title: Text(cat, style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14)),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.accentRed, size: 18),
+                          onPressed: () => _removeCategory(cat),
+                          tooltip: 'Remove',
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
   }
 }

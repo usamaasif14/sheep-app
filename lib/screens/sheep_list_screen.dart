@@ -112,10 +112,26 @@ class _SheepListScreenState extends State<SheepListScreen> {
                 delegate: SliverChildBuilderDelegate(
                   (context, i) => Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: SheepCard(
-                      sheep: sheep[i],
-                      onTap: () => _openDetail(context, sheep[i]),
-                    ).animate(delay: Duration(milliseconds: i * 50)).fadeIn().slideX(begin: -0.1),
+                    child: Dismissible(
+                      key: ValueKey(sheep[i].id),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(right: 20),
+                        decoration: BoxDecoration(
+                          color: AppTheme.accentRed.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppTheme.accentRed.withOpacity(0.4)),
+                        ),
+                        child: const Icon(Icons.delete_rounded, color: AppTheme.accentRed, size: 26),
+                      ),
+                      confirmDismiss: (_) => _confirmDeleteSheep(context, sheep[i]),
+                      onDismissed: (_) => provider.deleteSheep(sheep[i].id),
+                      child: SheepCard(
+                        sheep: sheep[i],
+                        onTap: () => _openDetail(context, sheep[i]),
+                      ).animate(delay: Duration(milliseconds: i * 50)).fadeIn().slideX(begin: -0.1),
+                    ),
                   ),
                   childCount: sheep.length,
                 ),
@@ -348,5 +364,31 @@ class _SheepListScreenState extends State<SheepListScreen> {
       context,
       MaterialPageRoute(builder: (_) => const AddSheepScreen()),
     );
+  }
+
+  Future<bool> _confirmDeleteSheep(BuildContext context, Sheep sheep) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.cardBg,
+        title: const Text('Remove Sheep', style: TextStyle(color: AppTheme.textPrimary)),
+        content: Text(
+          'Remove ${sheep.name.isEmpty ? sheep.tagNumber : '${sheep.name} (${sheep.tagNumber})'} from your flock?',
+          style: const TextStyle(color: AppTheme.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentRed),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    return confirmed == true;
   }
 }
