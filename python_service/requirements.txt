@@ -1,0 +1,8 @@
+# Python Suite Requirements for Sheep Farm Manager
+# The core server and CLI run with ZERO dependencies on standard Python 3.8+!
+# The packages below are optional enhancements for advanced cloud deployment:
+#
+# fastapi>=0.109.0
+# uvicorn>=0.27.0
+# pydantic>=2.0.0
+# requests>=2.31.0

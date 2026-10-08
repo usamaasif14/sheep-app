@@ -1,0 +1,95 @@
+name: sheep_manager
+description: A comprehensive sheep farm management application for Android.
+version: 1.0.0+1
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  provider: ^6.1.1
+
+  # Local database
+  sqflite: ^2.3.0
+  path: ^1.8.3
+
+  # Firebase (cloud backup)
+  firebase_core: ^2.24.2
+  firebase_auth: ^4.16.0
+  cloud_firestore: ^4.14.0
+  firebase_storage: ^11.6.0
+
+  # Google Sign-In for backup auth
+  google_sign_in: ^6.2.1
+
+  # Charts and analytics
+  fl_chart: ^0.66.2
+
+  # Image picker for sheep photos
+  image_picker: ^1.0.7
+  image_cropper: ^5.0.1
+
+  # Notifications & reminders
+  flutter_local_notifications: ^17.0.0
+  timezone: ^0.9.2
+
+  # QR code scanning for sheep tags
+  mobile_scanner: ^3.5.6
+
+  # Export to PDF/CSV
+  pdf: ^3.10.8
+  csv: ^6.0.0
+  share_plus: ^7.2.1
+  path_provider: ^2.1.2
+
+  # UI enhancements
+  flutter_animate: ^4.5.0
+  shimmer: ^3.0.0
+  cached_network_image: ^3.3.1
+  flutter_svg: ^2.0.9
+  lottie: ^3.1.0
+
+  # Date/time picker
+  intl: ^0.19.0
+  table_calendar: ^3.0.9
+
+  # UUID for unique IDs
+  uuid: ^4.3.3
+
+  # Shared preferences
+  shared_preferences: ^2.2.2
+
+  # Connectivity
+  connectivity_plus: ^5.0.2
+
+  # Permission handler
+  permission_handler: ^11.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.4.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/icons/
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icons/app_icon.png"
+  min_sdk_android: 21
+
+flutter_native_splash:
+  color: "#0D1B2A"
+  image: assets/images/splash_logo.png
+  android: true
+  ios: false

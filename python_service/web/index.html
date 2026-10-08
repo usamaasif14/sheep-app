@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Sheep Farm Manager - Mobile Test</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-dark: #0D1B2A;
+      --primary-medium: #1B2A3D;
+      --primary-light: #243447;
+      --accent: #E8A838;
+      --accent-green: #4CAF7D;
+      --accent-red: #EF5350;
+      --accent-blue: #42A5F5;
+      --text-primary: #F0F4F8;
+      --text-secondary: #B0BEC5;
+      --text-muted: #607D8B;
+      --card-border: #2D3F54;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { background-color: var(--primary-dark); color: var(--text-primary); padding-bottom: 75px; min-height: 100vh; }
+    
+    /* Top Bar */
+    .top-bar {
+      background: linear-gradient(135deg, #0D1B2A, #1A2E45);
+      padding: 16px 20px;
+      position: sticky; top: 0; z-index: 100;
+      border-bottom: 1px solid var(--card-border);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .top-title { font-size: 19px; font-weight: 700; color: var(--text-primary); }
+    .top-subtitle { font-size: 12px; color: var(--text-muted); }
+    .badge { background: rgba(232, 168, 56, 0.15); color: var(--accent); padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; border: 1px solid rgba(232, 168, 56, 0.3); }
+
+    /* Content Area */
+    .tab-content { display: none; padding: 16px; }
+    .tab-content.active { display: block; }
+
+    /* Metrics Grid */
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+    .stat-card {
+      background: var(--primary-medium);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 14px;
+      display: flex; flex-direction: column; justify-content: space-between;
+    }
+    .stat-title { font-size: 11px; color: var(--text-secondary); }
+    .stat-val { font-size: 22px; font-weight: 700; margin: 6px 0 2px 0; }
+    .stat-sub { font-size: 10px; color: var(--text-muted); }
+
+    /* Cards */
+    .card {
+      background: var(--primary-medium);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .section-title { font-size: 15px; font-weight: 700; margin: 16px 0 12px 0; display: flex; align-items: center; gap: 8px; color: var(--text-primary); }
+
+    /* Sheep List Item */
+    .sheep-item {
+      background: var(--primary-medium);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 10px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .sheep-avatar {
+      width: 46px; height: 46px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; margin-right: 12px;
+    }
+    .sheep-info { flex: 1; }
+    .sheep-tag { color: var(--accent); font-size: 12px; font-weight: 700; }
+    .sheep-name { font-size: 15px; font-weight: 600; margin: 2px 0; }
+    .sheep-details { font-size: 12px; color: var(--text-muted); }
+
+    /* Buttons */
+    .btn {
+      background: var(--accent); color: var(--primary-dark);
+      border: none; border-radius: 12px;
+      padding: 12px 20px; font-size: 14px; font-weight: 600;
+      width: 100%; cursor: pointer; text-align: center;
+      display: inline-block; margin-top: 10px;
+    }
+    .btn-secondary { background: var(--primary-light); color: var(--text-primary); border: 1px solid var(--card-border); }
+
+    /* Bottom Nav Bar */
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      height: 65px; background: var(--primary-medium);
+      border-top: 1px solid var(--card-border);
+      display: flex; justify-content: space-around; align-items: center;
+      z-index: 200;
+    }
+    .nav-btn {
+      background: none; border: none; color: var(--text-muted);
+      display: flex; flex-direction: column; align-items: center;
+      font-size: 10px; font-weight: 500; cursor: pointer; gap: 4px;
+    }
+    .nav-btn.active { color: var(--accent); font-weight: 600; }
+    .nav-btn svg { width: 22px; height: 22px; fill: currentColor; }
+
+    /* Forms */
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+    .form-control {
+      width: 100%; background: var(--primary-light);
+      border: 1px solid var(--card-border); border-radius: 10px;
+      padding: 12px; color: var(--text-primary); font-size: 14px; outline: none;
+    }
+    .form-control:focus { border-color: var(--accent); }
+    .modal {
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.7); z-index: 300;
+      align-items: flex-end; justify-content: center;
+    }
+    .modal.active { display: flex; }
+    .modal-content {
+      background: var(--primary-medium); width: 100%; max-width: 500px;
+      border-radius: 20px 20px 0 0; padding: 20px; max-height: 90vh; overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <div class="top-bar">
+    <div>
+      <div class="top-title">🐑 Sheep Manager</div>
+      <div class="top-subtitle">Live Mobile Test Interface</div>
+    </div>
+    <span class="badge" id="flock-badge">Connecting...</span>
+  </div>
+
+  <!-- DASHBOARD TAB -->
+  <div id="tab-dashboard" class="tab-content active">
+    <div class="section-title">📊 Farm Overview</div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-title">Total Flock</span>
+        <span class="stat-val" style="color: var(--accent)" id="dash-total">0</span>
+        <span class="stat-sub">Active sheep</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-title">Ewes (Female)</span>
+        <span class="stat-val" style="color: #EC407A" id="dash-ewes">0</span>
+        <span class="stat-sub">Breeding ewes</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-title">Rams (Male)</span>
+        <span class="stat-val" style="color: var(--accent-blue)" id="dash-rams">0</span>
+        <span class="stat-sub">Stud rams</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-title">Net Profit</span>
+        <span class="stat-val" style="color: var(--accent-green)" id="dash-profit">Rs 0</span>
+        <span class="stat-sub">Income - Expenses</span>
+      </div>
+    </div>
+
+    <button class="btn" onclick="openAddSheepModal()">+ Add New Sheep</button>
+
+    <div class="section-title">⚡ Quick Actions</div>
+    <div class="card" style="display: flex; gap: 10px;">
+      <button class="btn btn-secondary" onclick="switchTab('flock')">🐑 View Flock</button>
+      <button class="btn btn-secondary" onclick="openAddFinanceModal()">💰 Log Expense</button>
+    </div>
+  </div>
+
+  <!-- FLOCK TAB -->
+  <div id="tab-flock" class="tab-content">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <div class="section-title" style="margin: 0;">Flock Records</div>
+      <button class="btn" style="width: auto; padding: 6px 14px; margin: 0; font-size: 12px;" onclick="openAddSheepModal()">+ Add</button>
+    </div>
+    <div id="sheep-list-container">
+      <div style="text-align: center; color: var(--text-muted); padding: 40px;">Loading flock...</div>
+    </div>
+  </div>
+
+  <!-- FINANCES TAB -->
+  <div id="tab-finance" class="tab-content">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <div class="section-title" style="margin: 0;">Financial Ledger</div>
+      <button class="btn" style="width: auto; padding: 6px 14px; margin: 0; font-size: 12px;" onclick="openAddFinanceModal()">+ Transaction</button>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-title">Total Income</span>
+        <span class="stat-val" style="color: var(--accent-green)" id="fin-income">Rs 0</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-title">Total Expense</span>
+        <span class="stat-val" style="color: var(--accent-red)" id="fin-expense">Rs 0</span>
+      </div>
+    </div>
+    <div id="finance-list-container">
+      <div style="text-align: center; color: var(--text-muted); padding: 40px;">Loading finances...</div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAVIGATION -->
+  <div class="bottom-nav">
+    <button class="nav-btn active" onclick="switchTab('dashboard')">
+      <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+      Dashboard
+    </button>
+    <button class="nav-btn" onclick="switchTab('flock')">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+      Flock
+    </button>
+    <button class="nav-btn" onclick="switchTab('finance')">
+      <svg viewBox="0 0 24 24"><path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+      Finance
+    </button>
+  </div>
+
+  <!-- ADD SHEEP MODAL -->
+  <div id="add-sheep-modal" class="modal">
+    <div class="modal-content">
+      <h3 style="margin-bottom: 16px; color: var(--text-primary);">Register New Sheep</h3>
+      <div class="form-group">
+        <label>Ear Tag Number *</label>
+        <input type="text" id="inp-tag" class="form-control" placeholder="e.g. SHP-105" required>
+      </div>
+      <div class="form-group">
+        <label>Sheep Name (Optional)</label>
+        <input type="text" id="inp-name" class="form-control" placeholder="e.g. Daisy">
+      </div>
+      <div class="form-group">
+        <label>Breed</label>
+        <select id="inp-breed" class="form-control">
+          <option value="Merino">Merino</option>
+          <option value="Dorper">Dorper</option>
+          <option value="Suffolk">Suffolk</option>
+          <option value="Texel">Texel</option>
+          <option value="Corriedale">Corriedale</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Gender</label>
+        <select id="inp-gender" class="form-control">
+          <option value="Female">Female (Ewe)</option>
+          <option value="Male">Male (Ram)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Weight (kg)</label>
+        <input type="number" step="0.5" id="inp-weight" class="form-control" placeholder="45.0">
+      </div>
+      <button class="btn" onclick="submitAddSheep()">Save Sheep</button>
+      <button class="btn btn-secondary" onclick="closeModal('add-sheep-modal')">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ADD FINANCE MODAL -->
+  <div id="add-finance-modal" class="modal">
+    <div class="modal-content">
+      <h3 style="margin-bottom: 16px; color: var(--text-primary);">Add Transaction</h3>
+      <div class="form-group">
+        <label>Transaction Type</label>
+        <select id="fin-type" class="form-control">
+          <option value="Expense">Expense</option>
+          <option value="Income">Income</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select id="fin-cat" class="form-control">
+          <option value="Feed & Fodder">Feed & Fodder</option>
+          <option value="Veterinary & Medicine">Veterinary & Medicine</option>
+          <option value="Sheep Sale">Sheep Sale</option>
+          <option value="Wool & Shearing">Wool & Shearing</option>
+          <option value="Equipment">Equipment</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Amount (Rs) *</label>
+        <input type="number" id="fin-amount" class="form-control" placeholder="5000" required>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <input type="text" id="fin-desc" class="form-control" placeholder="Purpose or details">
+      </div>
+      <button class="btn" onclick="submitAddFinance()">Save Entry</button>
+      <button class="btn btn-secondary" onclick="closeModal('add-finance-modal')">Cancel</button>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin;
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('tab-' + tabId).classList.add('active');
+      const idx = tabId === 'dashboard' ? 0 : tabId === 'flock' ? 1 : 2;
+      document.querySelectorAll('.nav-btn')[idx].classList.add('active');
+      if (tabId === 'flock') loadFlock();
+      if (tabId === 'finance') loadFinances();
+    }
+
+    async function loadStats() {
+      try {
+        const res = await fetch(`${API_BASE}/api/stats`);
+        const data = await res.json();
+        document.getElementById('dash-total').textContent = data.sheep.active || 0;
+        document.getElementById('dash-ewes').textContent = data.sheep.ewes || 0;
+        document.getElementById('dash-rams').textContent = data.sheep.rams || 0;
+        document.getElementById('dash-profit').textContent = 'Rs ' + (data.finances.net_profit || 0).toLocaleString();
+        document.getElementById('flock-badge').textContent = `${data.sheep.active || 0} Sheep Active`;
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function loadFlock() {
+      const container = document.getElementById('sheep-list-container');
+      try {
+        const res = await fetch(`${API_BASE}/api/sheep`);
+        const list = await res.json();
+        if (list.length === 0) {
+          container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px;">No sheep found. Tap + Add to create one!</div>';
+          return;
+        }
+        container.innerHTML = list.map(s => `
+          <div class="sheep-item">
+            <div class="sheep-avatar" style="background: ${s.gender === 'Female' ? 'rgba(236, 64, 122, 0.15)' : 'rgba(66, 165, 245, 0.15)'}">
+              ${s.gender === 'Female' ? '🐑' : '🐏'}
+            </div>
+            <div class="sheep-info">
+              <span class="sheep-tag">${s.tagNumber}</span>
+              <div class="sheep-name">${s.name || 'Unnamed'}</div>
+              <div class="sheep-details">${s.breed} • ${s.gender} • ${s.weight} kg</div>
+            </div>
+            <span class="badge" style="color: var(--accent-green); border-color: rgba(76, 175, 125, 0.3);">${s.status}</span>
+          </div>
+        `).join('');
+      } catch (e) {
+        container.innerHTML = '<div style="color: var(--accent-red); padding: 20px;">Failed to load flock.</div>';
+      }
+    }
+
+    async function loadFinances() {
+      try {
+        const [sumRes, listRes] = await Promise.all([
+          fetch(`${API_BASE}/api/finances/summary`),
+          fetch(`${API_BASE}/api/finances`)
+        ]);
+        const sum = await sumRes.json();
+        const list = await listRes.json();
+        document.getElementById('fin-income').textContent = 'Rs ' + (sum.income || 0).toLocaleString();
+        document.getElementById('fin-expense').textContent = 'Rs ' + (sum.expense || 0).toLocaleString();
+
+        const container = document.getElementById('finance-list-container');
+        if (list.length === 0) {
+          container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px;">No financial transactions logged yet.</div>';
+          return;
+        }
+        container.innerHTML = list.map(r => `
+          <div class="card" style="display: flex; justify-content: space-between; align-items: center; padding: 12px;">
+            <div>
+              <div style="font-weight: 600; font-size: 14px;">${r.category}</div>
+              <div style="font-size: 11px; color: var(--text-muted);">${r.description || ''} • ${r.date.slice(0, 10)}</div>
+            </div>
+            <div style="font-weight: 700; color: ${r.type === 'Income' ? 'var(--accent-green)' : 'var(--accent-red)'}">
+              ${r.type === 'Income' ? '+' : '-'} Rs ${(r.amount || 0).toLocaleString()}
+            </div>
+          </div>
+        `).join('');
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function openAddSheepModal() { document.getElementById('add-sheep-modal').classList.add('active'); }
+    function openAddFinanceModal() { document.getElementById('add-finance-modal').classList.add('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    async function submitAddSheep() {
+      const tag = document.getElementById('inp-tag').value.trim();
+      if (!tag) return alert('Please enter a tag number');
+      const sheep = {
+        id: 'shp_' + Date.now(),
+        tagNumber: tag,
+        name: document.getElementById('inp-name').value.trim(),
+        breed: document.getElementById('inp-breed').value,
+        gender: document.getElementById('inp-gender').value,
+        weight: parseFloat(document.getElementById('inp-weight').value || '0'),
+        dateOfBirth: new Date().toISOString(),
+        dateAdded: new Date().toISOString(),
+        lastUpdated: new Date().toISOString(),
+        status: 'Active'
+      };
+      await fetch(`${API_BASE}/api/sheep`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sheep)
+      });
+      closeModal('add-sheep-modal');
+      loadStats();
+      loadFlock();
+      document.getElementById('inp-tag').value = '';
+      document.getElementById('inp-name').value = '';
+    }
+
+    async function submitAddFinance() {
+      const amount = parseFloat(document.getElementById('fin-amount').value || '0');
+      if (!amount) return alert('Please enter a valid amount');
+      const record = {
+        id: 'fin_' + Date.now(),
+        type: document.getElementById('fin-type').value,
+        category: document.getElementById('fin-cat').value,
+        description: document.getElementById('fin-desc').value.trim(),
+        amount: amount,
+        date: new Date().toISOString(),
+        createdAt: new Date().toISOString()
+      };
+      await fetch(`${API_BASE}/api/finances`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(record)
+      });
+      closeModal('add-finance-modal');
+      loadStats();
+      loadFinances();
+      document.getElementById('fin-amount').value = '';
+      document.getElementById('fin-desc').value = '';
+    }
+
+    // Initialize
+    loadStats();
+  </script>
+</body>
+</html>
