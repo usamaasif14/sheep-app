@@ -382,7 +382,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         // Excel — read the _json_backup hidden sheet
         final bytes = await File(path).readAsBytes();
         final excel = Excel.decodeBytes(bytes);
-        final jsonSheet = excel.tables['_json_backup'];
+        final jsonSheet = excel.tables['_data_backup'] ?? excel.tables['_json_backup'];
         if (jsonSheet != null && jsonSheet.rows.isNotEmpty) {
           final jsonStr = jsonSheet.rows.first.first?.value?.toString() ?? '';
           if (jsonStr.isNotEmpty) {

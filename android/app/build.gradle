@@ -2,8 +2,6 @@ plugins {
     id "com.android.application"
     id "kotlin-android"
     id "dev.flutter.flutter-gradle-plugin"
-    id "com.google.gms.google-services"
-
 }
 
 def localProperties = new Properties()
@@ -22,6 +20,15 @@ if (flutterVersionCode == null) {
 def flutterVersionName = localProperties.getProperty("flutter.versionName")
 if (flutterVersionName == null) {
     flutterVersionName = "1.0.0"
+}
+
+// Load key.properties if it exists (for release signing)
+def keyPropertiesFile = rootProject.file("key.properties")
+def keyProperties = new Properties()
+if (keyPropertiesFile.exists()) {
+    keyPropertiesFile.withReader("UTF-8") { reader ->
+        keyProperties.load(reader)
+    }
 }
 
 android {
@@ -43,6 +50,17 @@ android {
         main.java.srcDirs += "src/main/kotlin"
     }
 
+    signingConfigs {
+        release {
+            if (keyPropertiesFile.exists()) {
+                keyAlias keyProperties['keyAlias']
+                keyPassword keyProperties['keyPassword']
+                storeFile file(keyProperties['storeFile'])
+                storePassword keyProperties['storePassword']
+            }
+        }
+    }
+
     defaultConfig {
         applicationId "com.sheepmanager.app"
         minSdk 21
@@ -54,7 +72,8 @@ android {
 
     buildTypes {
         release {
-            signingConfig signingConfigs.debug
+            // Use release signing if keystore exists, otherwise fall back to debug
+            signingConfig keyPropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"

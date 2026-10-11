@@ -96,7 +96,12 @@ class BackupService {
   Future<BackupResult> exportToExcel() async {
     try {
       final data = await _db.exportAllData();
+      final jsonString = jsonEncode(data);
       final excel = Excel.createExcel();
+
+      // ── Write JSON backup FIRST (before setDefaultSheet deletes it) ──
+      final jsonSheet = excel['_data_backup'];
+      jsonSheet.appendRow([TextCellValue(jsonString)]);
 
       // Animals sheet
       final animalSheet = excel['Animals'];
@@ -179,10 +184,6 @@ class BackupService {
           m['lambsSurvived']?.toString() ?? '', m['notes'] ?? '',
         ]);
       }
-
-      // Hidden JSON backup sheet for exact re-import
-      final jsonSheet = excel['_json_backup'];
-      jsonSheet.appendRow([TextCellValue(jsonEncode(data))]);
 
       // Save and share
       final dir = await getTemporaryDirectory();
