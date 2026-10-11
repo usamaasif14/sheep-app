@@ -1,4 +1,4 @@
-name: Build Android APK (Sheep Farm Manager)
+name: Build Android APK (Animal Management)
 
 on:
   push:
@@ -26,12 +26,17 @@ jobs:
           flutter-version: '3.24.0'
           channel: 'stable'
           cache: true
-          
-      - name: Decode google-services.json
-        if: ${{ secrets.GOOGLE_SERVICES_JSON != '' }}
+
+      - name: Decode google-services.json (if secret exists)
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
-          echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 --decode > android/app/google-services.json
-    
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            echo "$GOOGLE_SERVICES_JSON" | base64 --decode > android/app/google-services.json
+            echo "google-services.json decoded successfully"
+          else
+            echo "No GOOGLE_SERVICES_JSON secret found, skipping (offline mode)"
+          fi
 
       - name: Install Dependencies
         run: flutter pub get
