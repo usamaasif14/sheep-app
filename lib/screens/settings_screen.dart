@@ -1,3 +1,7 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
+import 'package:excel/excel.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -326,26 +330,88 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   color: AppTheme.accentGreen, size: 22),
             ),
             title: const Text('Export to Excel (.xlsx)',
-                style: TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600)),
-            subtitle: const Text(
-                'All animals, health, finance & breeding records',
+                style: TextStyle(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
+            subtitle: const Text('All animals, health, finance & breeding records',
                 style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
             trailing: _isBusy
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child:
-                        CircularProgressIndicator(strokeWidth: 2, color: AppTheme.accentGreen))
-                : const Icon(Icons.chevron_right_rounded,
-                    color: AppTheme.textMuted),
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.accentGreen))
+                : const Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted),
             onTap: _isBusy ? null : _exportExcel,
+          ),
+          const Divider(height: 1, color: AppTheme.divider),
+          ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppTheme.accentBlue.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.file_upload_rounded,
+                  color: AppTheme.accentBlue, size: 22),
+            ),
+            title: const Text('Import from Excel / JSON',
+                style: TextStyle(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
+            subtitle: const Text('Restore from a previously exported file',
+                style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+            trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted),
+            onTap: _isBusy ? null : _importFromFile,
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _importFromFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['xlsx', 'json'],
+      );
+      if (result == null || result.files.isEmpty) return;
+      final path = result.files.first.path;
+      if (path == null) return;
+
+      setState(() => _isBusy = true);
+
+      BackupResult backupResult;
+
+      if (path.endsWith('.json')) {
+        final jsonStr = await File(path).readAsString();
+        backupResult = await _backupService.importFromJson(jsonStr);
+      } else {
+        // Excel — read the _json_backup hidden sheet
+        final bytes = await File(path).readAsBytes();
+        final excel = Excel.decodeBytes(bytes);
+        final jsonSheet = excel.tables['_json_backup'];
+        if (jsonSheet != null && jsonSheet.rows.isNotEmpty) {
+          final jsonStr = jsonSheet.rows.first.first?.value?.toString() ?? '';
+          if (jsonStr.isNotEmpty) {
+            backupResult = await _backupService.importFromJson(jsonStr);
+          } else {
+            backupResult = BackupResult(success: false, message: 'No backup data found in Excel file.');
+          }
+        } else {
+          backupResult = BackupResult(success: false, message: 'This Excel file has no importable backup sheet. Export again to get an importable file.');
+        }
+      }
+
+      if (mounted) {
+        setState(() => _isBusy = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(backupResult.message),
+          backgroundColor: backupResult.success ? AppTheme.accentGreen : AppTheme.accentRed,
+          duration: const Duration(seconds: 4),
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isBusy = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Import failed: $e'),
+          backgroundColor: AppTheme.accentRed,
+        ));
+      }
+    }
   }
 
   // ── Notifications ───────────────────────────────────────────────────────────

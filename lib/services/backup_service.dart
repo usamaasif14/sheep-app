@@ -180,6 +180,10 @@ class BackupService {
         ]);
       }
 
+      // Hidden JSON backup sheet for exact re-import
+      final jsonSheet = excel['_json_backup'];
+      jsonSheet.appendRow([TextCellValue(jsonEncode(data))]);
+
       // Save and share
       final dir = await getTemporaryDirectory();
       final name =
@@ -229,6 +233,17 @@ class BackupService {
     final months = (DateTime.now().difference(dob).inDays / 30.44).floor();
     if (months < 12) return '${months}mo';
     return '${(months / 12).floor()}yr';
+  }
+  // ── Import ────────────────────────────────────────────────────────
+
+  Future<BackupResult> importFromJson(String jsonString) async {
+    try {
+      final data = jsonDecode(jsonString) as Map<String, dynamic>;
+      await _db.importData(data);
+      return BackupResult(success: true, message: 'Data imported successfully! Restart app to see changes.');
+    } catch (e) {
+      return BackupResult(success: false, message: 'Import failed: $e');
+    }
   }
 }
 

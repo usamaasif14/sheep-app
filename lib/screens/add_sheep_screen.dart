@@ -57,6 +57,7 @@ class _AddSheepScreenState extends State<AddSheepScreen> {
   String? _selectedGroupOwner;
   String _ownershipType = 'Personal';
   final _partnerNameCtrl = TextEditingController();
+  List<String> _savedPartnerNames = [];
 
   // Parent selection
   String? _motherId;
@@ -126,12 +127,14 @@ class _AddSheepScreenState extends State<AddSheepScreen> {
     final breeds = await _db.getCustomValues('breed_${_animalType.toLowerCase()}');
     final locations = await _db.getCustomValues('location');
     final groups = await _db.getAllGroups();
+    final partners = await _db.getCustomValues('partner_name');
     final provider = context.read<SheepProvider>();
 
     setState(() {
       _savedBreeds = breeds;
       _savedLocations = locations;
       _groups = groups;
+      _savedPartnerNames = partners;
       _females = provider.activeFemales;
       _males = provider.activeMales;
 
@@ -622,6 +625,28 @@ class _AddSheepScreenState extends State<AddSheepScreen> {
                 ? 'Partner name is required for Partnership'
                 : null,
           ),
+          // Saved partner name chips
+          if (_savedPartnerNames.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: _savedPartnerNames.map((name) => GestureDetector(
+                  onTap: () => setState(() => _partnerNameCtrl.text = name),
+                  child: Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppTheme.accentBlue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppTheme.accentBlue.withOpacity(0.3)),
+                    ),
+                    child: Text(name, style: const TextStyle(color: AppTheme.accentBlue, fontSize: 11)),
+                  ),
+                )).toList(),
+              ),
+            ),
+          ],
         ],
       ],
     );
@@ -934,6 +959,10 @@ class _AddSheepScreenState extends State<AddSheepScreen> {
       }
       if (location.isNotEmpty) {
         await _db.saveCustomValue('location', location);
+      }
+      // Save partner name for future use
+      if (_ownershipType == 'Partnership' && _partnerNameCtrl.text.trim().isNotEmpty) {
+        await _db.saveCustomValue('partner_name', _partnerNameCtrl.text.trim());
       }
       // Save custom animal type
       if (_customAnimalType && effectiveType.isNotEmpty) {

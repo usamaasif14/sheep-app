@@ -459,8 +459,38 @@ class _SheepDetailScreenState extends State<SheepDetailScreen>
           if (r.medicine != null) Text('Medicine: ${r.medicine}', style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
           if (r.nextDueDate != null) Text('Next due: ${DateFormat('d MMM yyyy').format(r.nextDueDate!)}', style: const TextStyle(color: AppTheme.accentRed, fontSize: 11)),
         ])),
+        IconButton(
+          icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.accentRed, size: 18),
+          onPressed: () => _deleteHealthRecord(r),
+          tooltip: 'Delete',
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
+        ),
       ]),
     );
+  }
+
+  Future<void> _deleteHealthRecord(HealthRecord r) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.cardBg,
+        title: const Text('Delete Health Record', style: TextStyle(color: AppTheme.textPrimary)),
+        content: Text('Remove "${r.description}"? This cannot be undone.',
+            style: const TextStyle(color: AppTheme.textSecondary)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentRed),
+              child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await DatabaseService().deleteHealthRecord(r.id);
+      setState(() {});
+    }
   }
 
   // ── Weight tab ────────────────────────────────────────────────────
@@ -510,6 +540,13 @@ class _SheepDetailScreenState extends State<SheepDetailScreen>
                           Text('${r.weight} kg', style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 16)),
                           Text(DateFormat('d MMM yyyy').format(r.date), style: const TextStyle(color: AppTheme.textMuted, fontSize: 12)),
                         ])),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.accentRed, size: 18),
+                          onPressed: () => _deleteWeightRecord(r),
+                          tooltip: 'Delete',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
                       ]),
                     )),
                   ]),
@@ -543,6 +580,7 @@ class _SheepDetailScreenState extends State<SheepDetailScreen>
   Widget _breedingCard(BreedingRecord r) {
     final statusColors = {'Mated': AppTheme.accent, 'Pregnant': const Color(0xFFEC407A), 'Lambed': AppTheme.accentGreen, 'Failed': AppTheme.accentRed};
     final c = statusColors[r.status] ?? AppTheme.accent;
+    final db = DatabaseService();
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -550,9 +588,39 @@ class _SheepDetailScreenState extends State<SheepDetailScreen>
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           Text('Mating: ${DateFormat('d MMM yyyy').format(r.matingDate)}', style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 14)),
-          Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: c.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
-              child: Text(r.status, style: TextStyle(color: c, fontSize: 11, fontWeight: FontWeight.w600))),
+          Row(mainAxisSize: MainAxisSize.min, children: [
+            Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: c.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+                child: Text(r.status, style: TextStyle(color: c, fontSize: 11, fontWeight: FontWeight.w600))),
+            const SizedBox(width: 4),
+            GestureDetector(
+              onTap: () => _deleteBreedingRecord(r),
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(color: AppTheme.accentRed.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
+                child: const Icon(Icons.delete_outline_rounded, color: AppTheme.accentRed, size: 15),
+              ),
+            ),
+          ]),
         ]),
+        if (r.ramId != null)
+          FutureBuilder<Animal?>(
+            future: db.getAnimalById(r.ramId!),
+            builder: (ctx, snap) {
+              final ram = snap.data;
+              if (ram == null) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Row(children: [
+                  const Icon(Icons.male_rounded, color: AppTheme.accentBlue, size: 14),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Male: ${ram.tagNumber}${ram.name.isNotEmpty ? " — ${ram.name}" : ""}',
+                    style: const TextStyle(color: AppTheme.accentBlue, fontSize: 12),
+                  ),
+                ]),
+              );
+            },
+          ),
         if (r.expectedLambingDate != null) ...[
           const SizedBox(height: 4),
           Text('Expected birth: ${DateFormat('d MMM yyyy').format(r.expectedLambingDate!)}', style: const TextStyle(color: AppTheme.textMuted, fontSize: 12)),
@@ -563,6 +631,29 @@ class _SheepDetailScreenState extends State<SheepDetailScreen>
         ],
       ]),
     );
+  }
+
+  Future<void> _deleteBreedingRecord(BreedingRecord r) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.cardBg,
+        title: const Text('Delete Breeding Record', style: TextStyle(color: AppTheme.textPrimary)),
+        content: Text('Remove the mating record from ${DateFormat('d MMM yyyy').format(r.matingDate)}?',
+            style: const TextStyle(color: AppTheme.textSecondary)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentRed),
+              child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await DatabaseService().deleteBreedingRecord(r.id);
+      setState(() {});
+    }
   }
 
   // ── Offspring tab ─────────────────────────────────────────────────
@@ -827,6 +918,29 @@ class _SheepDetailScreenState extends State<SheepDetailScreen>
         ]),
       ),
     );
+  }
+
+  Future<void> _deleteWeightRecord(WeightRecord r) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.cardBg,
+        title: const Text('Delete Weight Record', style: TextStyle(color: AppTheme.textPrimary)),
+        content: Text('Remove the ${r.weight} kg record from ${DateFormat('d MMM yyyy').format(r.date)}?',
+            style: const TextStyle(color: AppTheme.textSecondary)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentRed),
+              child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await DatabaseService().deleteWeightRecord(r.id);
+      setState(() {});
+    }
   }
 
   Future<void> _confirmDelete(BuildContext context) async {

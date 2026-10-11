@@ -247,6 +247,11 @@ class DatabaseService {
     return maps.map(WeightRecord.fromMap).toList();
   }
 
+  Future<int> deleteWeightRecord(String id) async {
+    final db = await database;
+    return db.delete('weight_records', where: 'id=?', whereArgs: [id]);
+  }
+
   // ══ BREEDING ══════════════════════════════════════════════════════
 
   Future<String> insertBreedingRecord(BreedingRecord r) async {
@@ -271,6 +276,11 @@ class DatabaseService {
   Future<int> updateBreedingRecord(BreedingRecord r) async {
     final db = await database;
     return db.update('breeding_records', r.toMap(), where: 'id=?', whereArgs: [r.id]);
+  }
+
+  Future<int> deleteBreedingRecord(String id) async {
+    final db = await database;
+    return db.delete('breeding_records', where: 'id=?', whereArgs: [id]);
   }
 
   // ══ FINANCE ═══════════════════════════════════════════════════════

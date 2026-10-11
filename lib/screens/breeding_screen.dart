@@ -75,7 +75,7 @@ class _BreedingScreenState extends State<BreedingScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
-                  (context, i) => _BreedingCard(record: _records[i]),
+                  (context, i) => _BreedingCard(record: _records[i], onDeleted: _loadRecords),
                   childCount: _records.length,
                 ),
               ),
@@ -394,12 +394,19 @@ class _StatTile extends StatelessWidget {
   }
 }
 
-class _BreedingCard extends StatelessWidget {
+class _BreedingCard extends StatefulWidget {
   final BreedingRecord record;
-  const _BreedingCard({required this.record});
+  final VoidCallback onDeleted;
+  const _BreedingCard({required this.record, required this.onDeleted});
 
   @override
+  State<_BreedingCard> createState() => _BreedingCardState();
+}
+
+class _BreedingCardState extends State<_BreedingCard> {
+  @override
   Widget build(BuildContext context) {
+    final record = widget.record;
     final statusColors = {
       'Mated': AppTheme.accent,
       'Pregnant': const Color(0xFFEC407A),
@@ -424,17 +431,35 @@ class _BreedingCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Icon(Icons.favorite_rounded, color: Color(0xFFEC407A), size: 18),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(record.status,
-                    style: TextStyle(
-                        color: color,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12)),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(record.status,
+                        style: TextStyle(
+                            color: color,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12)),
+                  ),
+                  const SizedBox(width: 4),
+                  GestureDetector(
+                    onTap: () => _confirmDelete(context),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: AppTheme.accentRed.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.delete_outline_rounded,
+                          color: AppTheme.accentRed, size: 16),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -455,10 +480,32 @@ class _BreedingCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text('Mated: ${DateFormat('d MMM yyyy').format(record.matingDate)}',
               style: const TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+          if (record.ramId != null)
+            FutureBuilder<Animal?>(
+              future: db.getAnimalById(record.ramId!),
+              builder: (ctx, snap) {
+                final ram = snap.data;
+                if (ram == null) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Row(children: [
+                    const Icon(Icons.male_rounded, color: AppTheme.accentBlue, size: 14),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Male: ${ram.tagNumber}${ram.name.isNotEmpty ? " — ${ram.name}" : ""}',
+                      style: const TextStyle(color: AppTheme.accentBlue, fontSize: 12),
+                    ),
+                  ]),
+                );
+              },
+            ),
           if (record.expectedLambingDate != null)
-            Text(
-                'Expected Lambing: ${DateFormat('d MMM yyyy').format(record.expectedLambingDate!)}',
-                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                  'Expected Lambing: ${DateFormat('d MMM yyyy').format(record.expectedLambingDate!)}',
+                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+            ),
           if (record.lambsBorn != null) ...[
             const SizedBox(height: 6),
             Text(
@@ -471,5 +518,31 @@ class _BreedingCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.cardBg,
+        title: const Text('Delete Breeding Record',
+            style: TextStyle(color: AppTheme.textPrimary)),
+        content: const Text('Remove this breeding record? This cannot be undone.',
+            style: TextStyle(color: AppTheme.textSecondary)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentRed),
+              child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await DatabaseService().deleteBreedingRecord(widget.record.id);
+      widget.onDeleted();
+    }
   }
 }
