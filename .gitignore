@@ -48,3 +48,5 @@ Thumbs.db
 release.keystore
 android/key.properties
 android/app/release.keystore
+
+android/app/google-services.json
