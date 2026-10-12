@@ -213,6 +213,12 @@ class DatabaseService {
     return r.id;
   }
 
+  Future<List<HealthRecord>> getAllHealthRecords() async {
+    final db = await database;
+    final maps = await db.query('health_records', orderBy: 'date DESC');
+    return maps.map(HealthRecord.fromMap).toList();
+  }
+
   Future<List<HealthRecord>> getHealthRecordsForSheep(String id) async {
     final db = await database;
     final maps = await db.query('health_records', where: 'sheepId=?', whereArgs: [id], orderBy: 'date DESC');
@@ -226,6 +232,11 @@ class DatabaseService {
     final maps = await db.query('health_records',
         where: 'nextDueDate BETWEEN ? AND ?', whereArgs: [now, future], orderBy: 'nextDueDate ASC');
     return maps.map(HealthRecord.fromMap).toList();
+  }
+
+  Future<int> updateHealthRecord(HealthRecord record) async {
+    final db = await database;
+    return db.update('health_records', record.toMap(), where: 'id=?', whereArgs: [record.id]);
   }
 
   Future<int> deleteHealthRecord(String id) async {
@@ -245,6 +256,11 @@ class DatabaseService {
     final db = await database;
     final maps = await db.query('weight_records', where: 'sheepId=?', whereArgs: [id], orderBy: 'date ASC');
     return maps.map(WeightRecord.fromMap).toList();
+  }
+
+  Future<int> updateWeightRecord(WeightRecord record) async {
+    final db = await database;
+    return db.update('weight_records', record.toMap(), where: 'id=?', whereArgs: [record.id]);
   }
 
   Future<int> deleteWeightRecord(String id) async {
@@ -317,6 +333,11 @@ class DatabaseService {
       'income': ((r['totalIncome'] as num?) ?? 0.0).toDouble(),
       'expense': ((r['totalExpense'] as num?) ?? 0.0).toDouble(),
     };
+  }
+
+  Future<int> updateFinancialRecord(FinancialRecord record) async {
+    final db = await database;
+    return db.update('financial_records', record.toMap(), where: 'id=?', whereArgs: [record.id]);
   }
 
   Future<int> deleteFinancialRecord(String id) async {

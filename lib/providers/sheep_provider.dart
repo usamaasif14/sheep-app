@@ -73,11 +73,21 @@ class SheepProvider extends ChangeNotifier {
   Future<void> deleteSheep(String id) async { await _db.deleteAnimal(id); await loadSheep(); }
 
   Future<List<Animal>> getOffspring(String parentId) => _db.getOffspring(parentId);
+  Future<List<HealthRecord>> getAllHealthRecords() => _db.getAllHealthRecords();
   Future<List<HealthRecord>> getHealthRecords(String id) => _db.getHealthRecordsForSheep(id);
   Future<void> addHealthRecord(HealthRecord r) async { await _db.insertHealthRecord(r); notifyListeners(); }
+  Future<void> updateHealthRecord(HealthRecord r) async { await _db.updateHealthRecord(r); notifyListeners(); }
+  Future<void> deleteHealthRecord(String id) async { await _db.deleteHealthRecord(id); notifyListeners(); }
+
   Future<List<WeightRecord>> getWeightHistory(String id) => _db.getWeightRecordsForSheep(id);
   Future<void> addWeightRecord(WeightRecord r) async { await _db.insertWeightRecord(r); notifyListeners(); }
+  Future<void> updateWeightRecord(WeightRecord r) async { await _db.updateWeightRecord(r); notifyListeners(); }
+  Future<void> deleteWeightRecord(String id) async { await _db.deleteWeightRecord(id); notifyListeners(); }
+
   Future<List<BreedingRecord>> getBreedingRecords(String id) => _db.getBreedingRecordsForSheep(id);
+  Future<void> updateBreedingRecord(BreedingRecord r) async { await _db.updateBreedingRecord(r); notifyListeners(); }
+  Future<void> deleteBreedingRecord(String id) async { await _db.deleteBreedingRecord(id); notifyListeners(); }
+
   Future<List<HealthRecord>> getUpcomingHealthTasks() => _db.getUpcomingHealthTasks();
 
   Future<List<AnimalEvent>> getEvents(String animalId) => _db.getEventsForAnimal(animalId);
@@ -136,6 +146,7 @@ class FinanceProvider extends ChangeNotifier {
   }
 
   Future<void> addRecord(FinancialRecord r) async { await _db.insertFinancialRecord(r); await loadRecords(); }
+  Future<void> updateRecord(FinancialRecord r) async { await _db.updateFinancialRecord(r); await loadRecords(); }
   Future<void> deleteRecord(String id) async { await _db.deleteFinancialRecord(id); await loadRecords(); }
 
   Map<String, double> getExpenseByCategory() {

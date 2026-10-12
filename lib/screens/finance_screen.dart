@@ -462,9 +462,17 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
               ],
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.textMuted, size: 18),
-            onPressed: () => _confirmDelete(item.id),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textMuted, size: 18),
+            color: AppTheme.cardBg,
+            itemBuilder: (_) => [
+              const PopupMenuItem(value: 'edit', child: Text('Edit', style: TextStyle(color: AppTheme.textPrimary))),
+              const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: AppTheme.accentRed))),
+            ],
+            onSelected: (v) async {
+              if (v == 'delete') await _confirmDelete(item.id);
+              if (v == 'edit') await _showEditTransactionModal(context, item);
+            },
           ),
         ],
       ),
@@ -896,6 +904,73 @@ class _FinanceScreenState extends State<FinanceScreen> with SingleTickerProvider
                 ],
               ),
             ),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _showEditTransactionModal(BuildContext context, FinancialRecord existing) async {
+    final sheepProvider = context.read<SheepProvider>();
+    final sheepList = sheepProvider.allSheep;
+    String selectedType = existing.type;
+    String selectedCategory = existing.category;
+    final descController = TextEditingController(text: existing.description);
+    final amountController = TextEditingController(text: existing.amount.toStringAsFixed(0));
+    final notesController = TextEditingController(text: existing.notes ?? '');
+    DateTime transactionDate = existing.date;
+    String? selectedSheepId = existing.sheepId;
+
+    await showModalBottomSheet(
+      context: context, isScrollControlled: true, backgroundColor: AppTheme.cardBg,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (modalContext) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          final categories = selectedType == 'Income' ? _incomeCategories : _expenseCategories;
+          if (!categories.contains(selectedCategory)) selectedCategory = categories.first;
+          return Padding(
+            padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+            child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                const Text('Edit Transaction', style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+                IconButton(icon: const Icon(Icons.close_rounded, color: AppTheme.textMuted), onPressed: () => Navigator.pop(modalContext)),
+              ]),
+              const SizedBox(height: 16),
+              Row(children: [
+                Expanded(child: GestureDetector(
+                  onTap: () => setModalState(() { selectedType = 'Income'; selectedCategory = _incomeCategories.first; }),
+                  child: Container(padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(color: selectedType == 'Income' ? AppTheme.accentGreen.withOpacity(0.2) : AppTheme.primaryLight, borderRadius: BorderRadius.circular(10), border: Border.all(color: selectedType == 'Income' ? AppTheme.accentGreen : AppTheme.cardBorder)), alignment: Alignment.center, child: Text('Income', style: TextStyle(color: selectedType == 'Income' ? AppTheme.accentGreen : AppTheme.textSecondary, fontWeight: FontWeight.w600))),
+                )),
+                const SizedBox(width: 12),
+                Expanded(child: GestureDetector(
+                  onTap: () => setModalState(() { selectedType = 'Expense'; selectedCategory = _expenseCategories.first; }),
+                  child: Container(padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(color: selectedType == 'Expense' ? AppTheme.accentRed.withOpacity(0.2) : AppTheme.primaryLight, borderRadius: BorderRadius.circular(10), border: Border.all(color: selectedType == 'Expense' ? AppTheme.accentRed : AppTheme.cardBorder)), alignment: Alignment.center, child: Text('Expense', style: TextStyle(color: selectedType == 'Expense' ? AppTheme.accentRed : AppTheme.textSecondary, fontWeight: FontWeight.w600))),
+                )),
+              ]),
+              const SizedBox(height: 12),
+              TextField(controller: amountController, keyboardType: const TextInputType.numberWithOptions(decimal: true), style: const TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.w600), decoration: const InputDecoration(labelText: 'Amount (PKR)', prefixIcon: Icon(Icons.currency_rupee_rounded))),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(value: selectedCategory, dropdownColor: AppTheme.primaryLight, decoration: const InputDecoration(labelText: 'Category', prefixIcon: Icon(Icons.category_rounded)),
+                items: categories.map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(color: AppTheme.textPrimary)))).toList(),
+                onChanged: (val) { if (val != null) setModalState(() => selectedCategory = val); }),
+              const SizedBox(height: 12),
+              TextField(controller: descController, style: const TextStyle(color: AppTheme.textPrimary), decoration: const InputDecoration(labelText: 'Description', prefixIcon: Icon(Icons.description_rounded))),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String?>(value: sheepList.any((s) => s.id == selectedSheepId) ? selectedSheepId : null, dropdownColor: AppTheme.primaryLight, decoration: const InputDecoration(labelText: 'Linked Animal (Optional)', prefixIcon: Icon(Icons.pets_rounded)),
+                items: [const DropdownMenuItem(value: null, child: Text('None', style: TextStyle(color: AppTheme.textSecondary))), ...sheepList.map((s) => DropdownMenuItem(value: s.id, child: Text('${s.tagNumber} - ${s.name.isNotEmpty ? s.name : s.animalType}', style: const TextStyle(color: AppTheme.textPrimary))))],
+                onChanged: (val) => setModalState(() => selectedSheepId = val)),
+              const SizedBox(height: 20),
+              SizedBox(width: double.infinity, child: ElevatedButton(
+                onPressed: () async {
+                  final amt = double.tryParse(amountController.text.trim());
+                  if (amt == null || amt <= 0) return;
+                  final updated = FinancialRecord(id: existing.id, type: selectedType, category: selectedCategory, description: descController.text.trim().isNotEmpty ? descController.text.trim() : selectedCategory, amount: amt, date: transactionDate, sheepId: selectedSheepId, notes: notesController.text.trim().isEmpty ? null : notesController.text.trim(), createdAt: existing.createdAt);
+                  await context.read<FinanceProvider>().updateRecord(updated);
+                  if (mounted) { Navigator.pop(modalContext); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Transaction updated!'), backgroundColor: AppTheme.accentGreen)); }
+                },
+                child: const Text('Save Changes'),
+              )),
+            ])),
           );
         },
       ),

@@ -10,10 +10,16 @@ import '../services/notification_service.dart';
 import '../utils/app_theme.dart';
 
 class AddHealthRecordScreen extends StatefulWidget {
-  final String sheepId;
+  final String? sheepId;
   final String? sheepName;
+  final HealthRecord? existingRecord;
 
-  const AddHealthRecordScreen({super.key, required this.sheepId, this.sheepName});
+  const AddHealthRecordScreen({
+    super.key,
+    this.sheepId,
+    this.sheepName,
+    this.existingRecord,
+  });
 
   @override
   State<AddHealthRecordScreen> createState() => _AddHealthRecordScreenState();
@@ -23,6 +29,7 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
   final _formKey = GlobalKey<FormState>();
   final _uuid = const Uuid();
 
+  String? _selectedSheepId;
   String _type = 'Vaccination';
   final _descController = TextEditingController();
   final _medicineController = TextEditingController();
@@ -40,6 +47,28 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
   final List<String> _dosageUnits = ['ml', 'mg', 'g', 'tablets', 'units'];
 
   @override
+  void initState() {
+    super.initState();
+    final rec = widget.existingRecord;
+    if (rec != null) {
+      _selectedSheepId = rec.sheepId;
+      _type = rec.type;
+      _descController.text = rec.description;
+      _medicineController.text = rec.medicine ?? '';
+      _dosageController.text = rec.dosage?.toString() ?? '';
+      _dosageUnit = rec.dosageUnit ?? 'ml';
+      _vetController.text = rec.veterinarian ?? '';
+      _costController.text = rec.cost != null ? rec.cost!.toStringAsFixed(0) : '';
+      _notesController.text = rec.notes ?? '';
+      _date = rec.date;
+      _nextDueDate = rec.nextDueDate;
+      _setReminder = rec.nextDueDate != null;
+    } else {
+      _selectedSheepId = widget.sheepId;
+    }
+  }
+
+  @override
   void dispose() {
     _descController.dispose();
     _medicineController.dispose();
@@ -52,13 +81,14 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isEditing = widget.existingRecord != null;
     return Scaffold(
       backgroundColor: AppTheme.primaryDark,
       appBar: AppBar(
         backgroundColor: AppTheme.primaryDark,
         elevation: 0,
-        title: const Text('Add Health Record',
-            style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700)),
+        title: Text(isEditing ? 'Edit Health Record' : 'Add Health Record',
+            style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.textPrimary),
           onPressed: () => Navigator.pop(context),
@@ -66,8 +96,8 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
         actions: [
           TextButton(
             onPressed: _isSaving ? null : _save,
-            child: const Text('Save',
-                style: TextStyle(color: AppTheme.accent, fontWeight: FontWeight.w700)),
+            child: Text(isEditing ? 'Save' : 'Save',
+                style: const TextStyle(color: AppTheme.accent, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -78,6 +108,60 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Animal selection
+              _buildSectionTitle('Animal *'),
+              const SizedBox(height: 8),
+              if (widget.sheepId != null && widget.sheepName != null && widget.existingRecord == null)
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppTheme.cardBg,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.cardBorder),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.pets_rounded, color: AppTheme.accent, size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          widget.sheepName!,
+                          style: const TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                Consumer<SheepProvider>(
+                  builder: (ctx, provider, _) {
+                    final animals = provider.allAnimals;
+                    final hasSelected = animals.any((a) => a.id == _selectedSheepId);
+                    return DropdownButtonFormField<String>(
+                      value: hasSelected ? _selectedSheepId : null,
+                      dropdownColor: AppTheme.cardBg,
+                      decoration: const InputDecoration(
+                        hintText: 'Select Animal',
+                        prefixIcon: Icon(Icons.pets_rounded),
+                      ),
+                      validator: (v) => v == null ? 'Please select an animal' : null,
+                      items: animals.map((a) => DropdownMenuItem(
+                        value: a.id,
+                        child: Text(
+                          '${a.tagNumber} - ${a.name.isNotEmpty ? a.name : a.animalType} (${a.gender})',
+                          style: const TextStyle(color: AppTheme.textPrimary),
+                        ),
+                      )).toList(),
+                      onChanged: (v) => setState(() => _selectedSheepId = v),
+                    );
+                  },
+                ),
+              const SizedBox(height: 20),
+
               // Type selector
               _buildSectionTitle('Record Type'),
               const SizedBox(height: 12),
@@ -179,7 +263,9 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
                   onTap: () async {
                     final d = await _pickDate(_nextDueDate ?? DateTime.now());
                     if (d != null) setState(() => _nextDueDate = d);
-                  }),
+                  },
+                  onClear: () => setState(() => _nextDueDate = null),
+                ),
               if (_nextDueDate != null) ...[
                 const SizedBox(height: 12),
                 Container(
@@ -234,7 +320,7 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
                           width: 20,
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: AppTheme.primaryDark))
-                      : const Text('Save Health Record'),
+                      : Text(isEditing ? 'Save Changes' : 'Save Health Record'),
                 ),
               ),
               const SizedBox(height: 32),
@@ -303,41 +389,56 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
     required DateTime? date,
     String? hint,
     required VoidCallback onTap,
+    VoidCallback? onClear,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppTheme.primaryLight,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppTheme.cardBorder),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.calendar_today_rounded,
-                color: AppTheme.textSecondary, size: 18),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label,
-                    style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
-                Text(
-                  date != null
-                      ? DateFormat('d MMMM yyyy').format(date)
-                      : hint ?? 'Not set',
-                  style: TextStyle(
-                    color: date != null ? AppTheme.textPrimary : AppTheme.textMuted,
-                    fontWeight: FontWeight.w500,
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryLight,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.cardBorder),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.calendar_today_rounded,
+              color: AppTheme.textSecondary, size: 18),
+          const SizedBox(width: 12),
+          Expanded(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onTap,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label,
+                      style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                  Text(
+                    date != null
+                        ? DateFormat('d MMMM yyyy').format(date)
+                        : hint ?? 'Not set',
+                    style: TextStyle(
+                      color: date != null ? AppTheme.textPrimary : AppTheme.textMuted,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-            const Spacer(),
-            const Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted),
-          ],
-        ),
+          ),
+          if (date != null && onClear != null)
+            IconButton(
+              icon: const Icon(Icons.clear_rounded, color: AppTheme.textMuted, size: 18),
+              onPressed: onClear,
+              tooltip: 'Clear',
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            )
+          else
+            GestureDetector(
+              onTap: onTap,
+              child: const Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted),
+            ),
+        ],
       ),
     );
   }
@@ -388,12 +489,19 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_selectedSheepId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select an animal first!'), backgroundColor: AppTheme.accentRed),
+      );
+      return;
+    }
     setState(() => _isSaving = true);
 
     try {
+      final isEditing = widget.existingRecord != null;
       final record = HealthRecord(
-        id: _uuid.v4(),
-        sheepId: widget.sheepId,
+        id: isEditing ? widget.existingRecord!.id : _uuid.v4(),
+        sheepId: _selectedSheepId!,
         type: _type,
         description: _descController.text.trim(),
         medicine: _medicineController.text.trim().isEmpty
@@ -405,12 +513,16 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
         cost: double.tryParse(_costController.text),
         date: _date,
         nextDueDate: _nextDueDate,
-        status: 'Completed',
+        status: isEditing ? widget.existingRecord!.status : 'Completed',
         notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
-        createdAt: DateTime.now(),
+        createdAt: isEditing ? widget.existingRecord!.createdAt : DateTime.now(),
       );
 
-      await context.read<SheepProvider>().addHealthRecord(record);
+      if (isEditing) {
+        await context.read<SheepProvider>().updateHealthRecord(record);
+      } else {
+        await context.read<SheepProvider>().addHealthRecord(record);
+      }
 
       // Schedule notification if requested
       if (_setReminder && _nextDueDate != null) {
@@ -435,9 +547,9 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Health Record Saved',
-                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                      Text('$_type record added successfully',
+                      Text(isEditing ? 'Health Record Updated' : 'Health Record Saved',
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                      Text('$_type record ${isEditing ? "updated" : "added"} successfully',
                           style: const TextStyle(fontSize: 12, color: Colors.white70)),
                     ],
                   ),
@@ -450,7 +562,7 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
-        Navigator.pop(context);
+        Navigator.pop(context, true);
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);

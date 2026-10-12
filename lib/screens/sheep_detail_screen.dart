@@ -442,31 +442,74 @@ class _SheepDetailScreenState extends State<SheepDetailScreen>
   Widget _healthCard(HealthRecord r) {
     final colors = {'Vaccination': AppTheme.accentBlue, 'Treatment': AppTheme.accentRed, 'Checkup': AppTheme.accentGreen, 'Deworming': AppTheme.accent};
     final c = colors[r.type] ?? AppTheme.accent;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: AppTheme.cardBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: c.withOpacity(0.3))),
-      child: Row(children: [
-        Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: c.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
-            child: Icon(Icons.medical_services_rounded, color: c, size: 18)),
-        const SizedBox(width: 12),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text(r.type, style: TextStyle(color: c, fontWeight: FontWeight.w600, fontSize: 12)),
-            Text(DateFormat('d MMM yyyy').format(r.date), style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
-          ]),
-          Text(r.description, style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w500, fontSize: 14)),
-          if (r.medicine != null) Text('Medicine: ${r.medicine}', style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
-          if (r.nextDueDate != null) Text('Next due: ${DateFormat('d MMM yyyy').format(r.nextDueDate!)}', style: const TextStyle(color: AppTheme.accentRed, fontSize: 11)),
-        ])),
-        IconButton(
-          icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.accentRed, size: 18),
-          onPressed: () => _deleteHealthRecord(r),
-          tooltip: 'Delete',
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(),
-        ),
-      ]),
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () async {
+        await Navigator.push(context, MaterialPageRoute(
+          builder: (_) => AddHealthRecordScreen(
+            sheepId: _animal.id,
+            sheepName: _animal.name.isNotEmpty ? _animal.name : _animal.tagNumber,
+            existingRecord: r,
+          ),
+        ));
+        setState(() {});
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: AppTheme.cardBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: c.withOpacity(0.3))),
+        child: Row(children: [
+          Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: c.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
+              child: Icon(Icons.medical_services_rounded, color: c, size: 18)),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Text(r.type, style: TextStyle(color: c, fontWeight: FontWeight.w600, fontSize: 12)),
+              Text(DateFormat('d MMM yyyy').format(r.date), style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+            ]),
+            Text(r.description, style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w500, fontSize: 14)),
+            if (r.medicine != null) Text('Medicine: ${r.medicine}', style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+            if (r.nextDueDate != null) Text('Next due: ${DateFormat('d MMM yyyy').format(r.nextDueDate!)}', style: const TextStyle(color: AppTheme.accentRed, fontSize: 11)),
+          ])),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textMuted, size: 18),
+            color: AppTheme.cardBg,
+            itemBuilder: (_) => [
+              const PopupMenuItem(value: 'edit', child: Text('Edit', style: TextStyle(color: AppTheme.textPrimary))),
+              const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: AppTheme.accentRed))),
+            ],
+            onSelected: (v) async {
+              if (v == 'delete') {
+                final ok = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    backgroundColor: AppTheme.cardBg,
+                    title: const Text('Delete Health Record', style: TextStyle(color: AppTheme.textPrimary)),
+                    content: const Text('Remove this health record?', style: TextStyle(color: AppTheme.textSecondary)),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                      ElevatedButton(onPressed: () => Navigator.pop(ctx, true), style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentRed), child: const Text('Delete')),
+                    ],
+                  ),
+                );
+                if (ok == true && mounted) {
+                  await DatabaseService().deleteHealthRecord(r.id);
+                  setState(() {});
+                }
+              } else if (v == 'edit') {
+                await Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => AddHealthRecordScreen(
+                    sheepId: _animal.id,
+                    sheepName: _animal.name.isNotEmpty ? _animal.name : _animal.tagNumber,
+                    existingRecord: r,
+                  ),
+                ));
+                setState(() {});
+              }
+            },
+          ),
+        ]),
+      ),
     );
   }
 
@@ -476,21 +519,183 @@ class _SheepDetailScreenState extends State<SheepDetailScreen>
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.cardBg,
         title: const Text('Delete Health Record', style: TextStyle(color: AppTheme.textPrimary)),
-        content: Text('Remove "${r.description}"? This cannot be undone.',
-            style: const TextStyle(color: AppTheme.textSecondary)),
+        content: Text('Remove "${r.description}"? This cannot be undone.', style: const TextStyle(color: AppTheme.textSecondary)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentRed),
-              child: const Text('Delete')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentRed), child: const Text('Delete')),
         ],
       ),
     );
-    if (ok == true) {
-      await DatabaseService().deleteHealthRecord(r.id);
-      setState(() {});
-    }
+    if (ok == true) { await DatabaseService().deleteHealthRecord(r.id); setState(() {}); }
+  }
+
+  Future<void> _showEditHealthRecord(HealthRecord record) async {
+    final types = ['Vaccination', 'Treatment', 'Checkup', 'Deworming'];
+    String selType = record.type;
+    final descCtrl = TextEditingController(text: record.description);
+    final medCtrl = TextEditingController(text: record.medicine ?? '');
+    final dosageCtrl = TextEditingController(text: record.dosage?.toString() ?? '');
+    final vetCtrl = TextEditingController(text: record.veterinarian ?? '');
+    final costCtrl = TextEditingController(text: record.cost?.toString() ?? '');
+    final notesCtrl = TextEditingController(text: record.notes ?? '');
+    DateTime date = record.date;
+    DateTime? nextDue = record.nextDueDate;
+    await showModalBottomSheet(
+      context: context, isScrollControlled: true, backgroundColor: AppTheme.cardBg,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setS) => Padding(
+        padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+        child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            const Text('Edit Health Record', style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+            IconButton(icon: const Icon(Icons.close_rounded, color: AppTheme.textMuted), onPressed: () => Navigator.pop(ctx)),
+          ]),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(value: selType, dropdownColor: AppTheme.cardBg,
+            decoration: const InputDecoration(labelText: 'Type', prefixIcon: Icon(Icons.medical_services_rounded)),
+            items: types.map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(color: AppTheme.textPrimary)))).toList(),
+            onChanged: (v) => setS(() => selType = v ?? selType)),
+          const SizedBox(height: 10),
+          TextField(controller: descCtrl, style: const TextStyle(color: AppTheme.textPrimary), decoration: const InputDecoration(labelText: 'Description *', prefixIcon: Icon(Icons.description_rounded))),
+          const SizedBox(height: 10),
+          TextField(controller: medCtrl, style: const TextStyle(color: AppTheme.textPrimary), decoration: const InputDecoration(labelText: 'Medicine', prefixIcon: Icon(Icons.medication_rounded))),
+          const SizedBox(height: 10),
+          TextField(controller: dosageCtrl, keyboardType: TextInputType.number, style: const TextStyle(color: AppTheme.textPrimary), decoration: const InputDecoration(labelText: 'Dosage')),
+          const SizedBox(height: 10),
+          TextField(controller: vetCtrl, style: const TextStyle(color: AppTheme.textPrimary), decoration: const InputDecoration(labelText: 'Veterinarian', prefixIcon: Icon(Icons.person_rounded))),
+          const SizedBox(height: 10),
+          TextField(controller: costCtrl, keyboardType: TextInputType.number, style: const TextStyle(color: AppTheme.textPrimary), decoration: const InputDecoration(labelText: 'Cost (PKR)', prefixIcon: Icon(Icons.currency_rupee_rounded))),
+          const SizedBox(height: 10),
+          TextField(controller: notesCtrl, style: const TextStyle(color: AppTheme.textPrimary), maxLines: 2, decoration: const InputDecoration(labelText: 'Notes')),
+          const SizedBox(height: 10),
+          GestureDetector(
+            onTap: () async { final d = await showDatePicker(context: ctx, initialDate: date, firstDate: DateTime(2000), lastDate: DateTime.now().add(const Duration(days: 730)), builder: (c, child) => Theme(data: AppTheme.darkTheme, child: child!)); if (d != null) setS(() => date = d); },
+            child: Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: AppTheme.primaryLight, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.cardBorder)),
+              child: Row(children: [const Icon(Icons.calendar_today_rounded, color: AppTheme.textSecondary, size: 18), const SizedBox(width: 10), Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('Date', style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)), Text(DateFormat('d MMM yyyy').format(date), style: const TextStyle(color: AppTheme.textPrimary))])])),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(width: double.infinity, child: ElevatedButton(
+            onPressed: () async {
+              if (descCtrl.text.trim().isEmpty) return;
+              final updated = HealthRecord(id: record.id, sheepId: record.sheepId, type: selType, description: descCtrl.text.trim(), medicine: medCtrl.text.trim().isEmpty ? null : medCtrl.text.trim(), dosage: double.tryParse(dosageCtrl.text), dosageUnit: record.dosageUnit, veterinarian: vetCtrl.text.trim().isEmpty ? null : vetCtrl.text.trim(), cost: double.tryParse(costCtrl.text), date: date, nextDueDate: nextDue, status: record.status, notes: notesCtrl.text.trim().isEmpty ? null : notesCtrl.text.trim(), createdAt: record.createdAt);
+              await DatabaseService().updateHealthRecord(updated);
+              if (mounted) { Navigator.pop(ctx); setState(() {}); }
+            },
+            child: const Text('Save Changes'),
+          )),
+        ])),
+      )),
+    );
+  }
+
+  Future<void> _showEditBreedingRecord(BreedingRecord record) async {
+    final statusOptions = ['Mated', 'Pregnant', 'Lambed', 'Failed'];
+    String selStatus = record.status;
+    String? selRamId = record.ramId;
+    DateTime matingDate = record.matingDate;
+    DateTime? expectedDate = record.expectedLambingDate;
+    final lambsBornCtrl = TextEditingController(text: record.lambsBorn?.toString() ?? '');
+    final lambsSurvivedCtrl = TextEditingController(text: record.lambsSurvived?.toString() ?? '');
+    final notesCtrl = TextEditingController(text: record.notes ?? '');
+    final allAnimals = context.read<SheepProvider>().allAnimals;
+    final rams = allAnimals.where((a) => a.gender == 'Male').toList();
+
+    await showModalBottomSheet(
+      context: context, isScrollControlled: true, backgroundColor: AppTheme.cardBg,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setS) => Padding(
+        padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+        child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            const Text('Edit Breeding Record', style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+            IconButton(icon: const Icon(Icons.close_rounded, color: AppTheme.textMuted), onPressed: () => Navigator.pop(ctx)),
+          ]),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(value: selStatus, dropdownColor: AppTheme.cardBg,
+            decoration: const InputDecoration(labelText: 'Status', prefixIcon: Icon(Icons.info_rounded)),
+            items: statusOptions.map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(color: AppTheme.textPrimary)))).toList(),
+            onChanged: (v) => setS(() => selStatus = v ?? selStatus)),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String?>(
+            value: rams.any((r) => r.id == selRamId) ? selRamId : null,
+            dropdownColor: AppTheme.cardBg,
+            decoration: const InputDecoration(labelText: 'Ram / Male Partner', prefixIcon: Icon(Icons.male_rounded)),
+            items: [
+              const DropdownMenuItem(value: null, child: Text('None / Unknown', style: TextStyle(color: AppTheme.textMuted))),
+              ...rams.map((r) => DropdownMenuItem(value: r.id, child: Text('${r.tagNumber} - ${r.name.isNotEmpty ? r.name : r.animalType}', style: const TextStyle(color: AppTheme.textPrimary)))),
+            ],
+            onChanged: (v) => setS(() => selRamId = v),
+          ),
+          const SizedBox(height: 10),
+          GestureDetector(
+            onTap: () async {
+              final d = await showDatePicker(context: ctx, initialDate: matingDate, firstDate: DateTime(2020), lastDate: DateTime.now().add(const Duration(days: 365)), builder: (c, child) => Theme(data: AppTheme.darkTheme, child: child!));
+              if (d != null) setS(() { matingDate = d; expectedDate = d.add(const Duration(days: 147)); });
+            },
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(color: AppTheme.primaryLight, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.cardBorder)),
+              child: Row(children: [
+                const Icon(Icons.calendar_today_rounded, color: AppTheme.textSecondary, size: 18),
+                const SizedBox(width: 10),
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('Mating Date', style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                  Text(DateFormat('d MMM yyyy').format(matingDate), style: const TextStyle(color: AppTheme.textPrimary)),
+                ]),
+              ]),
+            ),
+          ),
+          const SizedBox(height: 10),
+          GestureDetector(
+            onTap: () async {
+              final d = await showDatePicker(context: ctx, initialDate: expectedDate ?? matingDate.add(const Duration(days: 147)), firstDate: DateTime(2020), lastDate: DateTime.now().add(const Duration(days: 365)), builder: (c, child) => Theme(data: AppTheme.darkTheme, child: child!));
+              if (d != null) setS(() => expectedDate = d);
+            },
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(color: AppTheme.primaryLight, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.cardBorder)),
+              child: Row(children: [
+                const Icon(Icons.event_available_rounded, color: AppTheme.textSecondary, size: 18),
+                const SizedBox(width: 10),
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('Expected Lambing Date', style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                  Text(expectedDate != null ? DateFormat('d MMM yyyy').format(expectedDate!) : 'Not set', style: const TextStyle(color: AppTheme.textPrimary)),
+                ]),
+              ]),
+            ),
+          ),
+          if (selStatus == 'Lambed') ...[
+            const SizedBox(height: 10),
+            TextField(controller: lambsBornCtrl, keyboardType: TextInputType.number, style: const TextStyle(color: AppTheme.textPrimary), decoration: const InputDecoration(labelText: 'Lambs Born', prefixIcon: Icon(Icons.child_care_rounded))),
+            const SizedBox(height: 10),
+            TextField(controller: lambsSurvivedCtrl, keyboardType: TextInputType.number, style: const TextStyle(color: AppTheme.textPrimary), decoration: const InputDecoration(labelText: 'Lambs Survived', prefixIcon: Icon(Icons.favorite_rounded))),
+          ],
+          const SizedBox(height: 10),
+          TextField(controller: notesCtrl, style: const TextStyle(color: AppTheme.textPrimary), maxLines: 2, decoration: const InputDecoration(labelText: 'Notes')),
+          const SizedBox(height: 20),
+          SizedBox(width: double.infinity, child: ElevatedButton(
+            onPressed: () async {
+              final updated = BreedingRecord(
+                id: record.id,
+                eweId: record.eweId,
+                ramId: selRamId,
+                matingDate: matingDate,
+                expectedLambingDate: expectedDate,
+                actualLambingDate: selStatus == 'Lambed' ? (record.actualLambingDate ?? DateTime.now()) : record.actualLambingDate,
+                status: selStatus,
+                lambsBorn: selStatus == 'Lambed' ? int.tryParse(lambsBornCtrl.text) : record.lambsBorn,
+                lambsSurvived: selStatus == 'Lambed' ? int.tryParse(lambsSurvivedCtrl.text) : record.lambsSurvived,
+                notes: notesCtrl.text.trim().isEmpty ? null : notesCtrl.text.trim(),
+                createdAt: record.createdAt,
+              );
+              await DatabaseService().updateBreedingRecord(updated);
+              if (mounted) { Navigator.pop(ctx); setState(() {}); }
+            },
+            child: const Text('Save Changes'),
+          )),
+        ])),
+      )),
+    );
   }
 
   // ── Weight tab ────────────────────────────────────────────────────
@@ -540,12 +745,17 @@ class _SheepDetailScreenState extends State<SheepDetailScreen>
                           Text('${r.weight} kg', style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 16)),
                           Text(DateFormat('d MMM yyyy').format(r.date), style: const TextStyle(color: AppTheme.textMuted, fontSize: 12)),
                         ])),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.accentRed, size: 18),
-                          onPressed: () => _deleteWeightRecord(r),
-                          tooltip: 'Delete',
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
+                        PopupMenuButton<String>(
+                          icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textMuted, size: 18),
+                          color: AppTheme.cardBg,
+                          itemBuilder: (_) => [
+                            const PopupMenuItem(value: 'edit', child: Text('Edit', style: TextStyle(color: AppTheme.textPrimary))),
+                            const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: AppTheme.accentRed))),
+                          ],
+                          onSelected: (v) async {
+                            if (v == 'edit') await _showEditWeightRecord(r);
+                            if (v == 'delete') await _deleteWeightRecord(r);
+                          },
                         ),
                       ]),
                     )),
@@ -592,13 +802,17 @@ class _SheepDetailScreenState extends State<SheepDetailScreen>
             Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: c.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
                 child: Text(r.status, style: TextStyle(color: c, fontSize: 11, fontWeight: FontWeight.w600))),
             const SizedBox(width: 4),
-            GestureDetector(
-              onTap: () => _deleteBreedingRecord(r),
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(color: AppTheme.accentRed.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
-                child: const Icon(Icons.delete_outline_rounded, color: AppTheme.accentRed, size: 15),
-              ),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textMuted, size: 18),
+              color: AppTheme.cardBg,
+              itemBuilder: (_) => [
+                const PopupMenuItem(value: 'edit', child: Text('Edit', style: TextStyle(color: AppTheme.textPrimary))),
+                const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: AppTheme.accentRed))),
+              ],
+              onSelected: (v) async {
+                if (v == 'edit') await _showEditBreedingRecord(r);
+                if (v == 'delete') await _deleteBreedingRecord(r);
+              },
             ),
           ]),
         ]),
@@ -888,6 +1102,40 @@ class _SheepDetailScreenState extends State<SheepDetailScreen>
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
       decoration: BoxDecoration(color: c.withOpacity(0.15), borderRadius: BorderRadius.circular(20), border: Border.all(color: c.withOpacity(0.3))),
       child: Text(status, style: TextStyle(color: c, fontSize: 11, fontWeight: FontWeight.w600)),
+    );
+  }
+
+  Future<void> _showEditWeightRecord(WeightRecord record) async {
+    final ctrl = TextEditingController(text: record.weight.toString());
+    DateTime date = record.date;
+    await showModalBottomSheet(
+      context: context, backgroundColor: AppTheme.cardBg, isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setS) => Padding(
+        padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text('Edit Weight Record', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 18)),
+          const SizedBox(height: 16),
+          TextField(controller: ctrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), autofocus: true, style: const TextStyle(color: AppTheme.textPrimary), decoration: const InputDecoration(labelText: 'Weight (kg)', suffixText: 'kg')),
+          const SizedBox(height: 10),
+          GestureDetector(
+            onTap: () async { final d = await showDatePicker(context: ctx, initialDate: date, firstDate: DateTime(2000), lastDate: DateTime.now(), builder: (c, child) => Theme(data: AppTheme.darkTheme, child: child!)); if (d != null) setS(() => date = d); },
+            child: Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: AppTheme.primaryLight, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.cardBorder)),
+              child: Row(children: [const Icon(Icons.calendar_today_rounded, color: AppTheme.textSecondary, size: 18), const SizedBox(width: 10), Text(DateFormat('d MMM yyyy').format(date), style: const TextStyle(color: AppTheme.textPrimary))])),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(width: double.infinity, child: ElevatedButton(
+            onPressed: () async {
+              final w = double.tryParse(ctrl.text);
+              if (w == null) return;
+              final updated = WeightRecord(id: record.id, sheepId: record.sheepId, weight: w, date: date, notes: record.notes);
+              await DatabaseService().updateWeightRecord(updated);
+              if (mounted) { Navigator.pop(ctx); setState(() {}); }
+            },
+            child: const Text('Save Changes'),
+          )),
+        ]),
+      )),
     );
   }
 

@@ -138,33 +138,40 @@ class _BreedingScreenState extends State<BreedingScreen> {
               Text('Pregnant (${pregnant.length})', style: const TextStyle(color: Color(0xFFEC407A), fontWeight: FontWeight.w700, fontSize: 15)),
             ]),
             const SizedBox(height: 10),
-            ...pregnant.map((a) => Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppTheme.cardBg,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFEC407A).withOpacity(0.35)),
+            ...pregnant.map((a) => InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () async {
+                await Navigator.push(context, MaterialPageRoute(builder: (_) => SheepDetailScreen(sheep: a)));
+                _loadRecords();
+              },
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppTheme.cardBg,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFEC407A).withOpacity(0.35)),
+                ),
+                child: Row(children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: const Color(0xFFEC407A).withOpacity(0.12), shape: BoxShape.circle),
+                    child: const Icon(Icons.pregnant_woman_rounded, color: Color(0xFFEC407A), size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('${a.tagNumber}${a.name.isNotEmpty ? " — ${a.name}" : ""}',
+                        style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 14)),
+                    Text('${a.animalType} · ${a.breed.isEmpty ? "Unknown breed" : a.breed} · ${a.ageDisplay}',
+                        style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                  ])),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(color: const Color(0xFFEC407A).withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+                    child: const Text('🤰 Pregnant', style: TextStyle(color: Color(0xFFEC407A), fontSize: 11, fontWeight: FontWeight.w600)),
+                  ),
+                ]),
               ),
-              child: Row(children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: const Color(0xFFEC407A).withOpacity(0.12), shape: BoxShape.circle),
-                  child: const Icon(Icons.pregnant_woman_rounded, color: Color(0xFFEC407A), size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('${a.tagNumber}${a.name.isNotEmpty ? " — ${a.name}" : ""}',
-                      style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 14)),
-                  Text('${a.animalType} · ${a.breed.isEmpty ? "Unknown breed" : a.breed} · ${a.ageDisplay}',
-                      style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                ])),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(color: const Color(0xFFEC407A).withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
-                  child: const Text('🤰 Pregnant', style: TextStyle(color: Color(0xFFEC407A), fontSize: 11, fontWeight: FontWeight.w600)),
-                ),
-              ]),
             )).toList(),
           ],
         );
@@ -416,107 +423,238 @@ class _BreedingCardState extends State<_BreedingCard> {
     final color = statusColors[record.status] ?? AppTheme.accent;
     final db = DatabaseService();
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.cardBg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.cardBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Icon(Icons.favorite_rounded, color: Color(0xFFEC407A), size: 18),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(record.status,
-                        style: TextStyle(
-                            color: color,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12)),
-                  ),
-                  const SizedBox(width: 4),
-                  GestureDetector(
-                    onTap: () => _confirmDelete(context),
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () async {
+        final ewe = await db.getSheepById(record.eweId);
+        if (ewe != null && context.mounted) {
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => SheepDetailScreen(sheep: ewe)));
+          widget.onDeleted();
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.cardBg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.cardBorder),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Icon(Icons.favorite_rounded, color: Color(0xFFEC407A), size: 18),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppTheme.accentRed.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(8),
+                        color: color.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Icon(Icons.delete_outline_rounded,
-                          color: AppTheme.accentRed, size: 16),
+                      child: Text(record.status,
+                          style: TextStyle(
+                              color: color,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12)),
                     ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          FutureBuilder<Animal?>(
-            future: db.getSheepById(record.eweId),
-            builder: (context, snap) {
-              final ewe = snap.data;
-              return Text(
-                'Ewe: ${ewe?.tagNumber ?? '...'} ${ewe?.name.isNotEmpty == true ? '(${ewe!.name})' : ''}',
-                style: const TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15),
-              );
-            },
-          ),
-          const SizedBox(height: 4),
-          Text('Mated: ${DateFormat('d MMM yyyy').format(record.matingDate)}',
-              style: const TextStyle(color: AppTheme.textMuted, fontSize: 12)),
-          if (record.ramId != null)
-            FutureBuilder<Animal?>(
-              future: db.getAnimalById(record.ramId!),
-              builder: (ctx, snap) {
-                final ram = snap.data;
-                if (ram == null) return const SizedBox.shrink();
-                return Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Row(children: [
-                    const Icon(Icons.male_rounded, color: AppTheme.accentBlue, size: 14),
                     const SizedBox(width: 4),
-                    Text(
-                      'Male: ${ram.tagNumber}${ram.name.isNotEmpty ? " — ${ram.name}" : ""}',
-                      style: const TextStyle(color: AppTheme.accentBlue, fontSize: 12),
+                    PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textMuted, size: 18),
+                      color: AppTheme.cardBg,
+                      itemBuilder: (_) => [
+                        const PopupMenuItem(value: 'view', child: Text('View Ewe Profile', style: TextStyle(color: AppTheme.textPrimary))),
+                        const PopupMenuItem(value: 'edit', child: Text('Edit', style: TextStyle(color: AppTheme.textPrimary))),
+                        const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: AppTheme.accentRed))),
+                      ],
+                      onSelected: (v) async {
+                        if (v == 'view') {
+                          final ewe = await db.getSheepById(record.eweId);
+                          if (ewe != null && context.mounted) {
+                            await Navigator.push(context, MaterialPageRoute(builder: (_) => SheepDetailScreen(sheep: ewe)));
+                            widget.onDeleted();
+                          }
+                        } else if (v == 'edit') {
+                          await _showEditDialog(context);
+                        } else if (v == 'delete') {
+                          await _confirmDelete(context);
+                        }
+                      },
                     ),
-                  ]),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            FutureBuilder<Animal?>(
+              future: db.getSheepById(record.eweId),
+              builder: (context, snap) {
+                final ewe = snap.data;
+                return Text(
+                  'Ewe: ${ewe?.tagNumber ?? '...'} ${ewe?.name.isNotEmpty == true ? '(${ewe!.name})' : ''}',
+                  style: const TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15),
                 );
               },
             ),
-          if (record.expectedLambingDate != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                  'Expected Lambing: ${DateFormat('d MMM yyyy').format(record.expectedLambingDate!)}',
-                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-            ),
-          if (record.lambsBorn != null) ...[
-            const SizedBox(height: 6),
-            Text(
-                '🐑 Lambs born: ${record.lambsBorn} | Survived: ${record.lambsSurvived ?? 0}',
-                style: const TextStyle(
-                    color: AppTheme.accentGreen,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13)),
+            const SizedBox(height: 4),
+            Text('Mated: ${DateFormat('d MMM yyyy').format(record.matingDate)}',
+                style: const TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+            if (record.ramId != null)
+              FutureBuilder<Animal?>(
+                future: db.getAnimalById(record.ramId!),
+                builder: (ctx, snap) {
+                  final ram = snap.data;
+                  if (ram == null) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Row(children: [
+                      const Icon(Icons.male_rounded, color: AppTheme.accentBlue, size: 14),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Male: ${ram.tagNumber}${ram.name.isNotEmpty ? " — ${ram.name}" : ""}',
+                        style: const TextStyle(color: AppTheme.accentBlue, fontSize: 12),
+                      ),
+                    ]),
+                  );
+                },
+              ),
+            if (record.expectedLambingDate != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                    'Expected Lambing: ${DateFormat('d MMM yyyy').format(record.expectedLambingDate!)}',
+                    style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+              ),
+            if (record.lambsBorn != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                  '🐑 Lambs born: ${record.lambsBorn} | Survived: ${record.lambsSurvived ?? 0}',
+                  style: const TextStyle(
+                      color: AppTheme.accentGreen,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13)),
+            ],
           ],
-        ],
+        ),
       ),
+    );
+  }
+
+  Future<void> _showEditDialog(BuildContext context) async {
+    final record = widget.record;
+    final statusOptions = ['Mated', 'Pregnant', 'Lambed', 'Failed'];
+    String selStatus = record.status;
+    String? selRamId = record.ramId;
+    DateTime matingDate = record.matingDate;
+    DateTime? expectedDate = record.expectedLambingDate;
+    final lambsBornCtrl = TextEditingController(text: record.lambsBorn?.toString() ?? '');
+    final lambsSurvivedCtrl = TextEditingController(text: record.lambsSurvived?.toString() ?? '');
+    final notesCtrl = TextEditingController(text: record.notes ?? '');
+    final allAnimals = context.read<SheepProvider>().allAnimals;
+    final rams = allAnimals.where((a) => a.gender == 'Male').toList();
+
+    await showModalBottomSheet(
+      context: context, isScrollControlled: true, backgroundColor: AppTheme.cardBg,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setS) => Padding(
+        padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+        child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            const Text('Edit Breeding Record', style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+            IconButton(icon: const Icon(Icons.close_rounded, color: AppTheme.textMuted), onPressed: () => Navigator.pop(ctx)),
+          ]),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(value: selStatus, dropdownColor: AppTheme.cardBg,
+            decoration: const InputDecoration(labelText: 'Status', prefixIcon: Icon(Icons.info_rounded)),
+            items: statusOptions.map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(color: AppTheme.textPrimary)))).toList(),
+            onChanged: (v) => setS(() => selStatus = v ?? selStatus)),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String?>(
+            value: rams.any((r) => r.id == selRamId) ? selRamId : null,
+            dropdownColor: AppTheme.cardBg,
+            decoration: const InputDecoration(labelText: 'Ram / Male Partner', prefixIcon: Icon(Icons.male_rounded)),
+            items: [
+              const DropdownMenuItem(value: null, child: Text('None / Unknown', style: TextStyle(color: AppTheme.textMuted))),
+              ...rams.map((r) => DropdownMenuItem(value: r.id, child: Text('${r.tagNumber} - ${r.name.isNotEmpty ? r.name : r.animalType}', style: const TextStyle(color: AppTheme.textPrimary)))),
+            ],
+            onChanged: (v) => setS(() => selRamId = v),
+          ),
+          const SizedBox(height: 10),
+          GestureDetector(
+            onTap: () async {
+              final d = await showDatePicker(context: ctx, initialDate: matingDate, firstDate: DateTime(2020), lastDate: DateTime.now().add(const Duration(days: 365)), builder: (c, child) => Theme(data: AppTheme.darkTheme, child: child!));
+              if (d != null) setS(() { matingDate = d; expectedDate = d.add(const Duration(days: 147)); });
+            },
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(color: AppTheme.primaryLight, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.cardBorder)),
+              child: Row(children: [
+                const Icon(Icons.calendar_today_rounded, color: AppTheme.textSecondary, size: 18),
+                const SizedBox(width: 10),
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('Mating Date', style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                  Text(DateFormat('d MMM yyyy').format(matingDate), style: const TextStyle(color: AppTheme.textPrimary)),
+                ]),
+              ]),
+            ),
+          ),
+          const SizedBox(height: 10),
+          GestureDetector(
+            onTap: () async {
+              final d = await showDatePicker(context: ctx, initialDate: expectedDate ?? matingDate.add(const Duration(days: 147)), firstDate: DateTime(2020), lastDate: DateTime.now().add(const Duration(days: 365)), builder: (c, child) => Theme(data: AppTheme.darkTheme, child: child!));
+              if (d != null) setS(() => expectedDate = d);
+            },
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(color: AppTheme.primaryLight, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.cardBorder)),
+              child: Row(children: [
+                const Icon(Icons.event_available_rounded, color: AppTheme.textSecondary, size: 18),
+                const SizedBox(width: 10),
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('Expected Lambing Date', style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                  Text(expectedDate != null ? DateFormat('d MMM yyyy').format(expectedDate!) : 'Not set', style: const TextStyle(color: AppTheme.textPrimary)),
+                ]),
+              ]),
+            ),
+          ),
+          if (selStatus == 'Lambed') ...[
+            const SizedBox(height: 10),
+            TextField(controller: lambsBornCtrl, keyboardType: TextInputType.number, style: const TextStyle(color: AppTheme.textPrimary), decoration: const InputDecoration(labelText: 'Lambs Born', prefixIcon: Icon(Icons.child_care_rounded))),
+            const SizedBox(height: 10),
+            TextField(controller: lambsSurvivedCtrl, keyboardType: TextInputType.number, style: const TextStyle(color: AppTheme.textPrimary), decoration: const InputDecoration(labelText: 'Lambs Survived', prefixIcon: Icon(Icons.favorite_rounded))),
+          ],
+          const SizedBox(height: 10),
+          TextField(controller: notesCtrl, style: const TextStyle(color: AppTheme.textPrimary), maxLines: 2, decoration: const InputDecoration(labelText: 'Notes')),
+          const SizedBox(height: 20),
+          SizedBox(width: double.infinity, child: ElevatedButton(
+            onPressed: () async {
+              final updated = BreedingRecord(
+                id: record.id,
+                eweId: record.eweId,
+                ramId: selRamId,
+                matingDate: matingDate,
+                expectedLambingDate: expectedDate,
+                actualLambingDate: selStatus == 'Lambed' ? (record.actualLambingDate ?? DateTime.now()) : record.actualLambingDate,
+                status: selStatus,
+                lambsBorn: selStatus == 'Lambed' ? int.tryParse(lambsBornCtrl.text) : record.lambsBorn,
+                lambsSurvived: selStatus == 'Lambed' ? int.tryParse(lambsSurvivedCtrl.text) : record.lambsSurvived,
+                notes: notesCtrl.text.trim().isEmpty ? null : notesCtrl.text.trim(),
+                createdAt: record.createdAt,
+              );
+              await DatabaseService().updateBreedingRecord(updated);
+              if (context.mounted) { Navigator.pop(ctx); widget.onDeleted(); }
+            },
+            child: const Text('Save Changes'),
+          )),
+        ])),
+      )),
     );
   }
 
