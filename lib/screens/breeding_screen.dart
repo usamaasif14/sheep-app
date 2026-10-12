@@ -9,6 +9,7 @@ import '../providers/sheep_provider.dart';
 import '../utils/app_theme.dart';
 import '../services/database_service.dart';
 import '../widgets/section_header.dart';
+import 'sheep_detail_screen.dart';
 
 class BreedingScreen extends StatefulWidget {
   const BreedingScreen({super.key});
