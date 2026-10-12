@@ -50,3 +50,5 @@ android/key.properties
 android/app/release.keystore
 
 android/app/google-services.json
+
+keystore_b64.txt

@@ -27,30 +27,37 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Decode google-services.json (if secret exists)
+      - name: Decode google-services.json
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
           if [ -n "$GOOGLE_SERVICES_JSON" ]; then
             echo "$GOOGLE_SERVICES_JSON" | base64 --decode > android/app/google-services.json
-            echo "google-services.json decoded"
+            echo "google-services.json decoded successfully"
           else
-            echo "No Firebase config - building in offline mode"
+            echo "No Firebase config — building in offline mode"
           fi
 
-      - name: Decode keystore (if secret exists)
+      - name: Decode keystore and create key.properties
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
           if [ -n "$KEYSTORE_BASE64" ]; then
             echo "$KEYSTORE_BASE64" | base64 --decode > android/app/release.keystore
-            echo "storePassword=${{ secrets.KEY_STORE_PASSWORD }}" > android/key.properties
-            echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
-            echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
-            echo "storeFile=release.keystore" >> android/key.properties
-            echo "Keystore decoded"
+            # Verify keystore is valid
+            keytool -list -keystore android/app/release.keystore -storepass "$KEY_STORE_PASSWORD" -alias "$KEY_ALIAS" -noprompt 2>&1 | head -5
+            cat > android/key.properties <<EOF
+          storePassword=$KEY_STORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
+          storeFile=release.keystore
+          EOF
+            echo "Keystore decoded and key.properties created"
           else
-            echo "No keystore secret - using debug signing"
+            echo "No keystore secret — using debug signing"
           fi
 
       - name: Install Dependencies
